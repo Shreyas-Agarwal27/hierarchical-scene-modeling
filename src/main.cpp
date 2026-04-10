@@ -2,12 +2,14 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 
+#include "constants.h"
+#include "mesh.h"
+#include "object_meshes.h"
+#include "object_renderer.h"
 #include "shader_utils.h"
 
-// window dimensions based on the 10x10 world aspect ratio
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
 
@@ -25,6 +27,9 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    glfwWindowHint(GLFW_DEPTH_BITS, 24);
+    glfwWindowHint(GLFW_STENCIL_BITS, 8); // request a stencil buffer from GLFW
 
     // glfw window creation
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Assignment 3", NULL, NULL);
@@ -49,10 +54,11 @@ int main() {
 
     // matrix setup
     float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 50.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glm::mat4 projection = glm::perspective(glm::radians(CAMERA_FOV), aspectRatio, CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE);
+
+    // object setup
+    Mesh ground = ObjectMeshes::createGround();
+    Mesh track = ObjectMeshes::createTrack();
 
     // game loop
     while (!glfwWindowShouldClose(window)) {
@@ -62,13 +68,24 @@ int main() {
 
         // render
         glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+        glm::mat4 view = glm::lookAt(
+            glm::vec3(0.0f, 300.0f, 0.0f), // location
+            glm::vec3(0.0f, 0.0f, 0.0f),  // look at
+            glm::vec3(0.0f, 0.0f, -1.0f)  // up vector cant be (0, 1, 0) as that would be anti parallel to p-e
+        );
 
+        ObjectRenderer::drawFloor(shaderProgram, projection, view, track, ground);
+
+        // glfw: swap buffers and poll IO events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+
+    ground.cleanup();
+    track.cleanup();
     glfwTerminate();
     return 0;
 }
