@@ -10,6 +10,7 @@
 #include "object_meshes.h"
 #include "object_renderer.h"
 #include "shader_utils.h"
+#include "texture_utils.h"
 
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
@@ -53,6 +54,9 @@ int main() {
     glfwSetKeyCallback(window, key_callback);
 
     unsigned int shaderProgram = compileShaders("shaders/vertex.glsl", "shaders/fragment.glsl");
+
+    unsigned int groundTexture = loadTexture("textures/grass.png");
+    unsigned int trackTexture = loadTexture("textures/road.png");
     
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
@@ -61,8 +65,8 @@ int main() {
     glm::mat4 projection = glm::perspective(glm::radians(CAMERA_FOV), aspectRatio, CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE);
 
     // object setup
-    Mesh ground = ObjectMeshes::createGround();
-    Mesh track = ObjectMeshes::createTrack();
+    Mesh ground = ObjectMeshes::createGround(groundTexture);
+    Mesh track = ObjectMeshes::createTrack(trackTexture);
     Mesh carFrame = ObjectMeshes::createCarFrame();
     Mesh carWindows = ObjectMeshes::createCarWindows();
     Mesh carWheels = ObjectMeshes::createCarWheels();

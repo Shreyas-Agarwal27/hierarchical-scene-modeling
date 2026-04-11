@@ -4,8 +4,8 @@
 #include "mesh.h"
 
 namespace ObjectMeshes {
-Mesh createTrack();
-Mesh createGround();
+Mesh createTrack(unsigned int textureID);
+Mesh createGround(unsigned int textureID);
 Mesh createCarFrame();
 Mesh createCarWindows();
 Mesh createCarWheels();

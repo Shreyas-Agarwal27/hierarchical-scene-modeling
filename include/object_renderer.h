@@ -23,10 +23,10 @@ struct CarAppearance {
 CarAppearance defaultCarAppearance();
 
 void drawFloor(unsigned int shaderProgram,
-                     const glm::mat4& projection,
-                     const glm::mat4& view,
-                     Mesh& track,
-                     Mesh& ground);
+                    const glm::mat4& projection,
+                    const glm::mat4& view,
+                    Mesh& track,
+                    Mesh& ground);
 
 void drawCar(unsigned int shaderProgram,
              const glm::mat4& projection,

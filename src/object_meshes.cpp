@@ -9,7 +9,7 @@
 
 namespace ObjectMeshes {
 
-Mesh createTrack() {
+Mesh createTrack(unsigned int textureID) {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
@@ -72,11 +72,10 @@ Mesh createTrack() {
         indices.push_back(startIdx + 2);
     }
 
-    unsigned int trackTexture = 0;
-    return Mesh(vertices, indices, trackTexture);
+    return Mesh(vertices, indices, textureID);
 }
 
-Mesh createGround() {
+Mesh createGround(unsigned int textureID) {
     float halfSize = WORLD_SIZE / 2.0f;
 
     std::vector<Vertex> vertices = {
@@ -91,8 +90,7 @@ Mesh createGround() {
         2, 3, 0
     };
 
-    unsigned int groundTexture = 0;
-    return Mesh(vertices, indices, groundTexture);
+    return Mesh(vertices, indices, textureID);
 }
 
 namespace {

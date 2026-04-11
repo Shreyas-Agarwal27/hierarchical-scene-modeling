@@ -17,10 +17,10 @@ CarAppearance defaultCarAppearance() {
 
 // draws floor (track and ground)
 void drawFloor(unsigned int shaderProgram,
-                     const glm::mat4& projection,
-                     const glm::mat4& view,
-                     Mesh& track,
-                     Mesh& ground) {
+                    const glm::mat4& projection,
+                    const glm::mat4& view,
+                    Mesh& track,
+                    Mesh& ground) {
     glUseProgram(shaderProgram);
 
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
@@ -39,7 +39,7 @@ void drawFloor(unsigned int shaderProgram,
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(trackTransform));
 
     int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
-    glUniform3f(colorLocation, 0.2f, 0.2f, 0.2f);
+    glUniform3f(colorLocation, 1.0f, 1.0f, 1.0f);
     track.draw(shaderProgram);
 
     // draw ground
@@ -49,7 +49,7 @@ void drawFloor(unsigned int shaderProgram,
 
     glm::mat4 groundTransform = glm::mat4(1.0f);
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(groundTransform));
-    glUniform3f(colorLocation, 0.0f, 1.0f, 0.0f);
+    glUniform3f(colorLocation, 1.0f, 1.0f, 1.0f);
     ground.draw(shaderProgram);
 
     glDisable(GL_STENCIL_TEST);

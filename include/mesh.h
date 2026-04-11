@@ -29,10 +29,15 @@ public:
     // call to draw the mesh with textures
     void draw(unsigned int shaderProgram) {
         // bind texture if one exists (0 means no texture)
+        int hasTexLocation = glGetUniformLocation(shaderProgram, "hasTexture");
         if (textureID != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, textureID);
-            glUniform1i(glGetUniformLocation(shaderProgram, "texture"), 0); 
+            glUniform1i(hasTexLocation, 1);
+            glUniform1i(glGetUniformLocation(shaderProgram, "mytexture"), 0); 
+        }
+        else{
+            glUniform1i(hasTexLocation, 0); 
         }
 
         // draw mesh
