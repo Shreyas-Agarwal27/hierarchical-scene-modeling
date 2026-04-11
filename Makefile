@@ -4,19 +4,15 @@ CC = gcc
 
 SRC_DIR = src
 OBJ_DIR = obj
-IMGUI_OBJ_DIR = obj/imgui
 INC_DIR = include
-IMGUI_DIR = include/imgui
-IMGUI_SRC_DIR = src/imgui
 
-CXXFLAGS = -std=c++17 -Wall -Iinclude -I$(IMGUI_DIR)
+CXXFLAGS = -std=c++17 -Wall -Iinclude
 CFLAGS = -Wall -Iinclude
 
 # -lglfw links GLFW, -lGL links OpenGL, -ldl is required by GLAD to load pointers, -lm is for math
 LDFLAGS = -lglfw -lGL -ldl -lm
 
-CPP_SOURCES = $(wildcard $(SRC_DIR)/*.cpp) \
-			  $(wildcard $(IMGUI_SRC_DIR)/*.cpp)
+CPP_SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 C_SOURCES = $(wildcard $(SRC_DIR)/*.c)
 
 # Generate corresponding .o object file names in the obj directory
@@ -39,7 +35,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
-	mkdir $(IMGUI_OBJ_DIR)
 
 run: $(TARGET)
 	./$(TARGET)

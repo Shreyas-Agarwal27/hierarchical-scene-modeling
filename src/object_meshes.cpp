@@ -95,4 +95,202 @@ Mesh createGround() {
     return Mesh(vertices, indices, groundTexture);
 }
 
+namespace {
+void addBox(std::vector<Vertex>& vertices,
+            std::vector<unsigned int>& indices,
+            const glm::vec3& center,
+            const glm::vec3& size) {
+    float hx = size.x / 2.0f;
+    float hy = size.y / 2.0f;
+    float hz = size.z / 2.0f;
+
+    glm::vec3 p[8] = {
+        center + glm::vec3(-hx, -hy, -hz),
+        center + glm::vec3(hx, -hy, -hz),
+        center + glm::vec3(hx, hy, -hz),
+        center + glm::vec3(-hx, hy, -hz),
+        center + glm::vec3(-hx, -hy, hz),
+        center + glm::vec3(hx, -hy, hz),
+        center + glm::vec3(hx, hy, hz),
+        center + glm::vec3(-hx, hy, hz),
+    };
+
+    auto addFace = [&](int i0, int i1, int i2, int i3, const glm::vec3& normal) {
+        unsigned int startIdx = static_cast<unsigned int>(vertices.size());
+        vertices.push_back({p[i0], normal, {0.0f, 0.0f}});
+        vertices.push_back({p[i1], normal, {1.0f, 0.0f}});
+        vertices.push_back({p[i2], normal, {1.0f, 1.0f}});
+        vertices.push_back({p[i3], normal, {0.0f, 1.0f}});
+
+        indices.push_back(startIdx);
+        indices.push_back(startIdx + 1);
+        indices.push_back(startIdx + 2);
+        indices.push_back(startIdx);
+        indices.push_back(startIdx + 2);
+        indices.push_back(startIdx + 3);
+    };
+
+    addFace(0, 4, 5, 1, glm::vec3(0, -1, 0));
+    addFace(3, 2, 6, 7, glm::vec3(0, 1, 0));
+    addFace(0, 1, 2, 3, glm::vec3(0, 0, -1));
+    addFace(5, 4, 7, 6, glm::vec3(0, 0, 1));
+    addFace(4, 0, 3, 7, glm::vec3(-1, 0, 0));
+    addFace(1, 5, 6, 2, glm::vec3(1, 0, 0));
+}
+
+void addCylinderZ(std::vector<Vertex>& vertices,
+                  std::vector<unsigned int>& indices,
+                  const glm::vec3& center,
+                  float radius,
+                  float depth,
+                  int segments) {
+    if (segments < 3) {
+        return;
+    }
+
+    float halfDepth = depth * 0.5f;
+    unsigned int baseIndex = static_cast<unsigned int>(vertices.size());
+
+    for (int i = 0; i <= segments; ++i) {
+        float t = 2.0f * glm::pi<float>() * static_cast<float>(i) / static_cast<float>(segments);
+        float cx = std::cos(t);
+        float cy = std::sin(t);
+        glm::vec3 normal = glm::normalize(glm::vec3(cx, cy, 0.0f));
+
+        glm::vec3 frontPos = center + glm::vec3(radius * cx, radius * cy, halfDepth);
+        glm::vec3 backPos = center + glm::vec3(radius * cx, radius * cy, -halfDepth);
+
+        vertices.push_back({frontPos, normal, {static_cast<float>(i) / static_cast<float>(segments), 1.0f}});
+        vertices.push_back({backPos, normal, {static_cast<float>(i) / static_cast<float>(segments), 0.0f}});
+    }
+
+    for (int i = 0; i < segments; ++i) {
+        unsigned int i0 = baseIndex + static_cast<unsigned int>(i * 2);
+        unsigned int i1 = i0 + 1;
+        unsigned int i2 = i0 + 2;
+        unsigned int i3 = i0 + 3;
+
+        indices.push_back(i0);
+        indices.push_back(i1);
+        indices.push_back(i2);
+        indices.push_back(i2);
+        indices.push_back(i1);
+        indices.push_back(i3);
+    }
+
+    unsigned int capStart = static_cast<unsigned int>(vertices.size());
+    unsigned int frontCenter = capStart;
+    vertices.push_back({center + glm::vec3(0.0f, 0.0f, halfDepth), glm::vec3(0.0f, 0.0f, 1.0f), {0.5f, 0.5f}});
+    unsigned int backCenter = capStart + 1;
+    vertices.push_back({center + glm::vec3(0.0f, 0.0f, -halfDepth), glm::vec3(0.0f, 0.0f, -1.0f), {0.5f, 0.5f}});
+
+    unsigned int frontRingStart = static_cast<unsigned int>(vertices.size());
+    for (int i = 0; i <= segments; ++i) {
+        float t = 2.0f * glm::pi<float>() * static_cast<float>(i) / static_cast<float>(segments);
+        float cx = std::cos(t);
+        float cy = std::sin(t);
+        vertices.push_back({
+            center + glm::vec3(radius * cx, radius * cy, halfDepth),
+            glm::vec3(0.0f, 0.0f, 1.0f),
+            {0.5f + 0.5f * cx, 0.5f + 0.5f * cy}
+        });
+    }
+
+    unsigned int backRingStart = static_cast<unsigned int>(vertices.size());
+    for (int i = 0; i <= segments; ++i) {
+        float t = 2.0f * glm::pi<float>() * static_cast<float>(i) / static_cast<float>(segments);
+        float cx = std::cos(t);
+        float cy = std::sin(t);
+        vertices.push_back({
+            center + glm::vec3(radius * cx, radius * cy, -halfDepth),
+            glm::vec3(0.0f, 0.0f, -1.0f),
+            {0.5f + 0.5f * cx, 0.5f + 0.5f * cy}
+        });
+    }
+
+    for (int i = 0; i < segments; ++i) {
+        unsigned int v0 = frontRingStart + static_cast<unsigned int>(i);
+        unsigned int v1 = frontRingStart + static_cast<unsigned int>(i + 1);
+        indices.push_back(frontCenter);
+        indices.push_back(v0);
+        indices.push_back(v1);
+    }
+
+    for (int i = 0; i < segments; ++i) {
+        unsigned int v0 = backRingStart + static_cast<unsigned int>(i);
+        unsigned int v1 = backRingStart + static_cast<unsigned int>(i + 1);
+        indices.push_back(backCenter);
+        indices.push_back(v1);
+        indices.push_back(v0);
+    }
+}
+}  // namespace
+
+Mesh createCarFrame() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    addBox(vertices, indices, 
+            glm::vec3(0.0f, CAR_FRAME_HEIGHT, 0.0f), 
+            glm::vec3(CAR_FRAME_LENGTH, CAR_FRAME_HEIGHT, CAR_FRAME_WIDTH));
+
+    addBox(vertices, indices, 
+           glm::vec3(CAR_CABIN_OFFSET_X, CAR_CABIN_OFFSET_Y, CAR_CABIN_OFFSET_Z), 
+           glm::vec3(CAR_CABIN_LENGTH, CAR_CABIN_HEIGHT, CAR_CABIN_WIDTH));
+
+    return Mesh(vertices, indices, 0);
+}
+
+Mesh createCarWindows() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    float frontEdge = CAR_CABIN_OFFSET_X + (CAR_CABIN_LENGTH / 2.0f);
+    float rearEdge  = CAR_CABIN_OFFSET_X - (CAR_CABIN_LENGTH / 2.0f);
+    float leftEdge  = CAR_CABIN_OFFSET_Z + (CAR_CABIN_WIDTH / 2.0f);
+    float rightEdge = CAR_CABIN_OFFSET_Z - (CAR_CABIN_WIDTH / 2.0f);
+    
+    float windowY = CAR_CABIN_OFFSET_Y + 0.1f; // slightly up from cabin centre
+
+    // windshield
+    addBox(vertices, indices, 
+           glm::vec3(frontEdge, windowY, CAR_CABIN_OFFSET_Z), 
+           glm::vec3(CAR_WINDOW_THICKNESS, CAR_WINDOW_HEIGHT, CAR_CABIN_WIDTH + 0.2f));
+
+    // rear window
+    addBox(vertices, indices, 
+           glm::vec3(rearEdge, windowY, CAR_CABIN_OFFSET_Z), 
+           glm::vec3(CAR_WINDOW_THICKNESS, CAR_WINDOW_HEIGHT, CAR_CABIN_WIDTH + 0.2f));
+
+    // left side
+    addBox(vertices, indices, 
+           glm::vec3(CAR_CABIN_OFFSET_X, windowY, leftEdge), 
+           glm::vec3(CAR_CABIN_LENGTH + 0.2f, CAR_WINDOW_HEIGHT, CAR_WINDOW_THICKNESS));
+
+    // right side
+    addBox(vertices, indices, 
+           glm::vec3(CAR_CABIN_OFFSET_X, windowY, rightEdge), 
+           glm::vec3(CAR_CABIN_LENGTH + 0.2f, CAR_WINDOW_HEIGHT, CAR_WINDOW_THICKNESS));
+    return Mesh(vertices, indices, 0);
+}
+
+Mesh createCarWheels() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    const int wheelSegments = 24;
+    const float wheelDepth = 1.8f;
+
+    float wheelX = (CAR_FRAME_LENGTH / 2.0f) * CAR_WHEEL_X_RATIO;
+    float wheelY = CAR_WHEEL_RADIUS;
+    float wheelZ = (CAR_FRAME_WIDTH / 2.0f) + CAR_WHEEL_Z_PROTRUSION;
+
+    addCylinderZ(vertices, indices, glm::vec3(wheelX, wheelY, wheelZ), CAR_WHEEL_RADIUS, wheelDepth, wheelSegments);
+    addCylinderZ(vertices, indices, glm::vec3(wheelX, wheelY, -wheelZ), CAR_WHEEL_RADIUS, wheelDepth, wheelSegments);
+    addCylinderZ(vertices, indices, glm::vec3(-wheelX, wheelY, wheelZ), CAR_WHEEL_RADIUS, wheelDepth, wheelSegments);
+    addCylinderZ(vertices, indices, glm::vec3(-wheelX, wheelY, -wheelZ), CAR_WHEEL_RADIUS, wheelDepth, wheelSegments);
+
+    return Mesh(vertices, indices, 0);
+}
+
 }  // namespace ObjectMeshes

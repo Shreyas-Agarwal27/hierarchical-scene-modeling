@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
 #include <iostream>
 
 #include "constants.h"
@@ -15,6 +16,9 @@ const unsigned int SCR_HEIGHT = 800;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+float carSpeed = 5.0f;
+float carDistance = 0.0f;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -59,6 +63,11 @@ int main() {
     // object setup
     Mesh ground = ObjectMeshes::createGround();
     Mesh track = ObjectMeshes::createTrack();
+    Mesh carFrame = ObjectMeshes::createCarFrame();
+    Mesh carWindows = ObjectMeshes::createCarWindows();
+    Mesh carWheels = ObjectMeshes::createCarWheels();
+
+    ObjectRenderer::CarAppearance carAppearance = ObjectRenderer::defaultCarAppearance();
 
     // game loop
     while (!glfwWindowShouldClose(window)) {
@@ -75,9 +84,39 @@ int main() {
             glm::vec3(0.0f, 0.0f, 0.0f),  // look at
             glm::vec3(0.0f, 0.0f, -1.0f)  // up vector cant be (0, 1, 0) as that would be anti parallel to p-e
         );
+        
+        carDistance += carSpeed * deltaTime;
+
+        float halfWidth = TRACK_WIDTH / 2.0f;
+        float spineRx = TRACK_RADIUS_X - halfWidth;
+        float spineRz = TRACK_RADIUS_Z - halfWidth;
+        float avgRadius = (spineRx + spineRz) / 2.0f;
+        float theta = carDistance / avgRadius; // Arc length formula
+
+        float carX = spineRx * std::cos(theta);
+        float carZ = spineRz * std::sin(theta);
+
+        // Calculate rotation so car points forward
+        float tx = -spineRx * std::sin(theta);
+        float tz = spineRz * std::cos(theta);
+        float carAngle = std::atan2(-tz, tx); 
+
+        // Generate car transform matrix
+        glm::mat4 carModel = glm::mat4(1.0f);
+        carModel = glm::translate(carModel, glm::vec3(carX, 0.0f, carZ));
+        carModel = glm::rotate(carModel, carAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+        carModel = glm::scale(carModel, glm::vec3(CAR_SCALE, CAR_SCALE, CAR_SCALE));
 
         ObjectRenderer::drawFloor(shaderProgram, projection, view, track, ground);
-
+        ObjectRenderer::drawCar(shaderProgram,
+                    projection,
+                    view,
+                    carFrame,
+                    carWindows,
+                    carWheels,
+                    carModel,
+                    carAppearance);
+        
         // glfw: swap buffers and poll IO events
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -86,6 +125,9 @@ int main() {
 
     ground.cleanup();
     track.cleanup();
+    carFrame.cleanup();
+    carWindows.cleanup();
+    carWheels.cleanup();
     glfwTerminate();
     return 0;
 }

@@ -7,6 +7,14 @@
 
 namespace ObjectRenderer {
 
+CarAppearance defaultCarAppearance() {
+    return {
+        {glm::vec3(0.85f, 0.10f, 0.10f), 0.9f, 0.2f, 1.0f},
+        {glm::vec3(0.20f, 0.45f, 0.95f), 0.0f, 0.1f, 1.0f},
+        {glm::vec3(0.05f, 0.05f, 0.05f), 0.0f, 0.8f, 1.0f},
+    };
+}
+
 // draws floor (track and ground)
 void drawFloor(unsigned int shaderProgram,
                      const glm::mat4& projection,
@@ -46,6 +54,41 @@ void drawFloor(unsigned int shaderProgram,
 
     glDisable(GL_STENCIL_TEST);
     glStencilMask(0xFF);
+}
+
+void drawCar(unsigned int shaderProgram,
+             const glm::mat4& projection,
+             const glm::mat4& view,
+             Mesh& carFrame,
+             Mesh& carWindows,
+             Mesh& carWheels,
+             const glm::mat4& modelTransform,
+             const CarAppearance& appearance) {
+    glUseProgram(shaderProgram);
+    
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(modelTransform));
+
+    int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
+
+    glUniform3f(colorLocation,
+                appearance.frame.baseColor.r,
+                appearance.frame.baseColor.g,
+                appearance.frame.baseColor.b);
+    carFrame.draw(shaderProgram);
+
+    glUniform3f(colorLocation,
+                appearance.windows.baseColor.r,
+                appearance.windows.baseColor.g,
+                appearance.windows.baseColor.b);
+    carWindows.draw(shaderProgram);
+
+    glUniform3f(colorLocation,
+                appearance.wheels.baseColor.r,
+                appearance.wheels.baseColor.g,
+                appearance.wheels.baseColor.b);
+    carWheels.draw(shaderProgram);
 }
 
 }  // namespace ObjectRenderer

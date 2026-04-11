@@ -6,6 +6,9 @@
 namespace ObjectMeshes {
 Mesh createTrack();
 Mesh createGround();
+Mesh createCarFrame();
+Mesh createCarWindows();
+Mesh createCarWheels();
 }  // namespace ObjectMeshes
 
 #endif
