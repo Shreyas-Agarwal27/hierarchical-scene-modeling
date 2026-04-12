@@ -18,6 +18,8 @@ const unsigned int SCR_HEIGHT = 800;
 
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+float frameTimer = 0.0f;
+int frameCount = 0;
 
 float carSpeed = 5.0f;
 float carDistance = 0.0f;
@@ -171,6 +173,17 @@ int main() {
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        frameTimer += deltaTime;
+        frameCount++;
+
+        if (frameTimer >= 1.0f) {
+            int fps = static_cast<int>(frameCount / frameTimer);
+            std::string newTitle = "Assignment 3 - FPS: " + std::to_string(fps);
+            glfwSetWindowTitle(window, newTitle.c_str());
+            
+            frameCount = 0;
+            frameTimer = 0.0f;
+        }
 
         // render
         glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
