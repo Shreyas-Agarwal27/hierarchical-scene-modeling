@@ -57,4 +57,15 @@ const float CAR_WINDOW_HEIGHT = 2.25f;
 const float CAR_WHEEL_X_RATIO = 0.625f; // how far the wheels are pushed toward the front bumper
 const float CAR_WHEEL_Z_PROTRUSION = 0.5f; // how far the wheels pop out from the sides of the car
 
+// Windmill settings
+const float WINDMILL_RADIUS = 2.5f;
+const float WINDMILL_DEPTH = 0.5f;
+const float WINDMILL_BLADE_WIDTH = 0.6f;
+const float WINDMILL_COLOR_R = 0.8f;
+const float WINDMILL_COLOR_G = 0.8f;
+const float WINDMILL_COLOR_B = 0.8f;
+
+const float WINDMILL_DEFAULT_SPEED = 1.5f; // radians per second
+const float WINDMILL_SPEED_INC = 2.0f;
+
 #endif

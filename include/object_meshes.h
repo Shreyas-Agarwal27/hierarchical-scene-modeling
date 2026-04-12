@@ -12,6 +12,8 @@ Mesh createCarWindows();
 Mesh createCarWheels();
 
 Mesh createBuilding(int stories, unsigned int textureID);
+
+Mesh createWindmill();
 }  // namespace ObjectMeshes
 
 #endif

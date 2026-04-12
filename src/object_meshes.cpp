@@ -306,4 +306,22 @@ Mesh createBuilding(int stories, unsigned int textureID) {
     return Mesh(vertices, indices, textureID);
 }
 
+Mesh createWindmill() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    // vertical blade
+    addBox(vertices, indices, 
+           glm::vec3(0.0f, 0.0f, 0.0f), 
+           glm::vec3(WINDMILL_BLADE_WIDTH, WINDMILL_RADIUS * 2.0f, WINDMILL_DEPTH));
+    
+    // horizontal blade
+    addBox(vertices, indices, 
+           glm::vec3(0.0f, 0.0f, 0.0f), 
+           glm::vec3(WINDMILL_RADIUS * 2.0f, WINDMILL_BLADE_WIDTH, WINDMILL_DEPTH));
+
+    // just colour, textureID = 0
+    return Mesh(vertices, indices, 0); 
+}
+
 }  // namespace ObjectMeshes

@@ -26,6 +26,9 @@ float carX = CAR_START_X;
 float carZ = CAR_START_Z;
 float carAngle = 0.0f;
 
+float windmillAngle = 0.0f;
+float windmillSpeed = WINDMILL_DEFAULT_SPEED;
+
 namespace {
 
 struct BuildingInstance {
@@ -95,17 +98,45 @@ void drawBuildings(unsigned int shaderProgram,
                             const glm::mat4& projection,
                             const glm::mat4& view,
                             std::vector<std::vector<Mesh>>& buildingMeshes,
-                            const std::vector<BuildingInstance>& buildingLayout) {
+                            const std::vector<BuildingInstance>& buildingLayout, 
+                            Mesh& windmillMesh,
+                            float currentWindmillAngle) {
     for (const BuildingInstance& building : buildingLayout) {
-        glm::mat4 modelTransform = glm::mat4(1.0f);
-        modelTransform = glm::translate(modelTransform, building.position);
+        // draw building
+        glm::mat4 buildingTransform = glm::mat4(1.0f);
+        buildingTransform = glm::translate(buildingTransform, building.position);
 
         ObjectRenderer::drawBuilding(shaderProgram,
                                      projection,
                                      view,
                                      meshForBuilding(buildingMeshes, building),
-                                     modelTransform,
+                                     buildingTransform,
                                      glm::vec3(BUILDING_COLOR_R, BUILDING_COLOR_G, BUILDING_COLOR_B));
+
+        float buildingHeight = building.stories * BUILDING_STORY_HEIGHT;
+        
+        // draw widnmill: start with the building's transform, then move to the top
+        glm::mat4 windmillTransform = buildingTransform; 
+        windmillTransform = glm::translate(windmillTransform, glm::vec3(0.0f, buildingHeight, 0.0f));
+
+        // if the building is on the +X side, the road is to its left (-X).
+        // if the building is on the -X side, the road is to its right (+X).
+        if (building.position.x > 0) {
+            windmillTransform = glm::translate(windmillTransform, glm::vec3(-BUILDING_WIDTH / 2.0f, 0.0f, 0.0f));
+            windmillTransform = glm::rotate(windmillTransform, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+        else {
+            windmillTransform = glm::translate(windmillTransform, glm::vec3(BUILDING_WIDTH / 2.0f, 0.0f, 0.0f));
+            windmillTransform = glm::rotate(windmillTransform, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+
+        windmillTransform = glm::rotate(windmillTransform, currentWindmillAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+        // can draw any colored mesh
+        ObjectRenderer::drawBuilding(shaderProgram, projection, view, 
+                                     windmillMesh, 
+                                     windmillTransform, 
+                                     glm::vec3(WINDMILL_COLOR_R, WINDMILL_COLOR_G, WINDMILL_COLOR_B));
     }
 }
 
@@ -131,6 +162,16 @@ void processInput(GLFWwindow *window, float deltaTime) {
         }
         if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
             carAngle -= glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
+        }
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || 
+            glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
+            windmillSpeed -= WINDMILL_SPEED_INC * deltaTime;
+        }
+        else {
+            windmillSpeed += WINDMILL_SPEED_INC * deltaTime;
         }
     }
 }
@@ -187,6 +228,8 @@ int main() {
     std::vector<std::vector<Mesh>> buildingMeshes = createBuildingMeshes(buildingTextures);
     std::vector<BuildingInstance> buildingLayout = createBuildingLayout(buildingTextures.size());
 
+    Mesh windmillMesh = ObjectMeshes::createWindmill();
+
     ObjectRenderer::CarAppearance carAppearance = ObjectRenderer::defaultCarAppearance();
 
     // game loop
@@ -217,6 +260,10 @@ int main() {
         );
         
         processInput(window, deltaTime);
+        windmillAngle += windmillSpeed * deltaTime;
+        if (windmillAngle > glm::two_pi<float>()) windmillAngle -= glm::two_pi<float>();
+        if (windmillAngle < -glm::two_pi<float>()) windmillAngle += glm::two_pi<float>();
+
         carX += carSpeed * std::cos(carAngle) * deltaTime;
         carZ += carSpeed * -std::sin(carAngle) * deltaTime; 
 
@@ -239,7 +286,9 @@ int main() {
                        projection,
                        view,
                        buildingMeshes,
-                       buildingLayout);
+                       buildingLayout,
+                       windmillMesh,
+                       windmillAngle);
         
 
         // glfw: swap buffers and poll IO events
@@ -253,6 +302,7 @@ int main() {
     carFrame.cleanup();
     carWindows.cleanup();
     carWheels.cleanup();
+    windmillMesh.cleanup();
     for (std::vector<Mesh>& textureMeshGroup : buildingMeshes) {
         for (Mesh& buildingMesh : textureMeshGroup) {
             buildingMesh.cleanup();
