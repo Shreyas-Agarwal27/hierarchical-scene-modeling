@@ -37,6 +37,13 @@ void drawCar(unsigned int shaderProgram,
              const glm::mat4& modelTransform,
              const CarAppearance& appearance);
 
+void drawBuilding(unsigned int shaderProgram,
+                  const glm::mat4& projection,
+                  const glm::mat4& view,
+                  Mesh& buildingMesh,
+                  const glm::mat4& modelTransform,
+                  const glm::vec3& color);
+
 }  // namespace ObjectRenderer
 
 #endif

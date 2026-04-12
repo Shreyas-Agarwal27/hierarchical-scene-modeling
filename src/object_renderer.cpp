@@ -91,4 +91,22 @@ void drawCar(unsigned int shaderProgram,
     carWheels.draw(shaderProgram);
 }
 
+void drawBuilding(unsigned int shaderProgram,
+                  const glm::mat4& projection,
+                  const glm::mat4& view,
+                  Mesh& buildingMesh,
+                  const glm::mat4& modelTransform,
+                  const glm::vec3& color) {
+    glUseProgram(shaderProgram);
+    
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(modelTransform));
+
+    int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
+    glUniform3f(colorLocation, color.r, color.g, color.b);
+
+    buildingMesh.draw(shaderProgram);
+}
+
 }  // namespace ObjectRenderer

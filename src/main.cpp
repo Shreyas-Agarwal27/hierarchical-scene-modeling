@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 #include "constants.h"
 #include "mesh.h"
@@ -20,6 +21,91 @@ float lastFrame = 0.0f;
 
 float carSpeed = 5.0f;
 float carDistance = 0.0f;
+
+namespace {
+
+struct BuildingInstance {
+    glm::vec3 position;
+    int stories;
+    std::size_t textureIndex;
+};
+
+int storyCountForBuildingIndex(int buildingIndex) {
+    const int storyVariantCount = BUILDING_MAX_STORIES - BUILDING_MIN_STORIES + 1;
+    return BUILDING_MIN_STORIES + (buildingIndex % storyVariantCount);
+}
+
+std::size_t textureIndexForBuildingIndex(int buildingIndex, std::size_t textureCount) {
+    return static_cast<std::size_t>(buildingIndex) % textureCount;
+}
+
+std::vector<BuildingInstance> createBuildingLayout(std::size_t textureCount) {
+    std::vector<BuildingInstance> buildings;
+    buildings.reserve(BUILDING_COUNT);
+
+    const float xOffset = TRACK_RADIUS_X + BUILDING_SIDE_CLEARANCE + (BUILDING_WIDTH * 0.5f);
+    const float zStart = -0.5f * BUILDING_SIDE_Z_SPACING * static_cast<float>(BUILDINGS_PER_SIDE - 1);
+
+    for (int side = 0; side < BUILDING_SIDES; ++side) {
+        const float sideSign = (side == 0) ? -1.0f : 1.0f;
+        const float xPos = sideSign * xOffset;
+
+        for (int slot = 0; slot < BUILDINGS_PER_SIDE; ++slot) {
+            const int buildingIndex = side * BUILDINGS_PER_SIDE + slot;
+            const float zPos = zStart + (static_cast<float>(slot) * BUILDING_SIDE_Z_SPACING);
+
+            buildings.push_back({
+                glm::vec3(xPos, 0.0f, zPos),
+                storyCountForBuildingIndex(buildingIndex),
+                textureIndexForBuildingIndex(buildingIndex, textureCount),
+            });
+        }
+    }
+
+    return buildings;
+}
+
+std::vector<std::vector<Mesh>> createBuildingMeshes(const std::vector<unsigned int>& textureIDs) {
+    std::vector<std::vector<Mesh>> meshesByTexture;
+    meshesByTexture.reserve(textureIDs.size());
+
+    for (unsigned int textureID : textureIDs) {
+        std::vector<Mesh> meshesForTexture;
+        meshesForTexture.reserve(BUILDING_MAX_STORIES - BUILDING_MIN_STORIES + 1);
+
+        for (int stories = BUILDING_MIN_STORIES; stories <= BUILDING_MAX_STORIES; ++stories) {
+            meshesForTexture.push_back(ObjectMeshes::createBuilding(stories, textureID));
+        }
+
+        meshesByTexture.push_back(std::move(meshesForTexture));
+    }
+
+    return meshesByTexture;
+}
+
+Mesh& meshForBuilding(std::vector<std::vector<Mesh>>& buildingMeshes, const BuildingInstance& building) {
+    return buildingMeshes[building.textureIndex][building.stories - BUILDING_MIN_STORIES];
+}
+
+void drawBuildings(unsigned int shaderProgram,
+                            const glm::mat4& projection,
+                            const glm::mat4& view,
+                            std::vector<std::vector<Mesh>>& buildingMeshes,
+                            const std::vector<BuildingInstance>& buildingLayout) {
+    for (const BuildingInstance& building : buildingLayout) {
+        glm::mat4 modelTransform = glm::mat4(1.0f);
+        modelTransform = glm::translate(modelTransform, building.position);
+
+        ObjectRenderer::drawBuilding(shaderProgram,
+                                     projection,
+                                     view,
+                                     meshForBuilding(buildingMeshes, building),
+                                     modelTransform,
+                                     glm::vec3(BUILDING_COLOR_R, BUILDING_COLOR_G, BUILDING_COLOR_B));
+    }
+}
+
+}  // namespace
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -57,6 +143,9 @@ int main() {
 
     unsigned int groundTexture = loadTexture("textures/grass.png");
     unsigned int trackTexture = loadTexture("textures/road.png");
+    unsigned int brickTexture = loadTexture("textures/brick.jpg");
+    unsigned int woodTexture = loadTexture("textures/wood.jpg");
+    std::vector<unsigned int> buildingTextures = {brickTexture, woodTexture};
     
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
@@ -67,9 +156,13 @@ int main() {
     // object setup
     Mesh ground = ObjectMeshes::createGround(groundTexture);
     Mesh track = ObjectMeshes::createTrack(trackTexture);
+
     Mesh carFrame = ObjectMeshes::createCarFrame();
     Mesh carWindows = ObjectMeshes::createCarWindows();
     Mesh carWheels = ObjectMeshes::createCarWheels();
+
+    std::vector<std::vector<Mesh>> buildingMeshes = createBuildingMeshes(buildingTextures);
+    std::vector<BuildingInstance> buildingLayout = createBuildingLayout(buildingTextures.size());
 
     ObjectRenderer::CarAppearance carAppearance = ObjectRenderer::defaultCarAppearance();
 
@@ -120,7 +213,14 @@ int main() {
                     carWheels,
                     carModel,
                     carAppearance);
+
+        drawBuildings(shaderProgram,
+                       projection,
+                       view,
+                       buildingMeshes,
+                       buildingLayout);
         
+
         // glfw: swap buffers and poll IO events
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -132,6 +232,11 @@ int main() {
     carFrame.cleanup();
     carWindows.cleanup();
     carWheels.cleanup();
+    for (std::vector<Mesh>& textureMeshGroup : buildingMeshes) {
+        for (Mesh& buildingMesh : textureMeshGroup) {
+            buildingMesh.cleanup();
+        }
+    }
     glfwTerminate();
     return 0;
 }

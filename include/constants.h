@@ -20,6 +20,23 @@ const float TRACK_RADIUS_Z = 30.0f; // outer vertical radius
 const float TRACK_WIDTH = 15.0f;
 const int TRACK_SEGMENTS = 64;      // smoothness of curve
 
+// Building settings
+const int BUILDING_SIDES = 2;
+const int BUILDINGS_PER_SIDE = 2;
+const int BUILDING_COUNT = BUILDING_SIDES * BUILDINGS_PER_SIDE;
+
+const int BUILDING_MIN_STORIES = 1;
+const int BUILDING_MAX_STORIES = 3;
+
+const float BUILDING_STORY_HEIGHT = 8.0f;
+const float BUILDING_WIDTH = 6.0f;
+const float BUILDING_DEPTH = 8.0f;
+const float BUILDING_SIDE_CLEARANCE = 2.0f;
+const float BUILDING_SIDE_Z_SPACING = 24.0f;
+const float BUILDING_COLOR_R = 1.0f;
+const float BUILDING_COLOR_G = 1.0f;
+const float BUILDING_COLOR_B = 1.0f;
+
 // Car settings
 const float CAR_SCALE = 0.75;
 const float CAR_FRAME_LENGTH = 16.0f;
