@@ -12,6 +12,7 @@
 #include "object_renderer.h"
 #include "shader_utils.h"
 #include "texture_utils.h"
+#include "camera.h"
 
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 800;
@@ -28,6 +29,8 @@ float carAngle = 0.0f;
 
 float windmillAngle = 0.0f;
 float windmillSpeed = WINDMILL_DEFAULT_SPEED;
+
+Camera camera;
 
 namespace {
 
@@ -145,6 +148,24 @@ void drawBuildings(unsigned int shaderProgram,
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_1) camera.setMode(CameraMode::SKY_VIEW);
+        if (key == GLFW_KEY_2) camera.setMode(CameraMode::CAR_VIEW);
+        if (key == GLFW_KEY_3) camera.setMode(CameraMode::GROUND_VIEW);
+        if (key == GLFW_KEY_4) camera.setMode(CameraMode::LIGHTSOURCE_VIEW);
+        if (key == GLFW_KEY_5) camera.setMode(CameraMode::HELICOPTER_CAM);
+    }
+
+    if (camera.currentMode == CameraMode::GROUND_VIEW) {
+        
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && camera.groundViewYaw < glm::radians(GROUND_CAMERA_MAX_ANGLE)) {
+            camera.groundViewYaw += PAN_SPEED * deltaTime;
+        }
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS && camera.groundViewYaw > -glm::radians(GROUND_CAMERA_MAX_ANGLE)) {
+            camera.groundViewYaw -= PAN_SPEED * deltaTime;
+        }
+    }
 }
 
 void processInput(GLFWwindow *window, float deltaTime) {
@@ -232,6 +253,15 @@ int main() {
 
     ObjectRenderer::CarAppearance carAppearance = ObjectRenderer::defaultCarAppearance();
 
+    glm::vec3 groundCamPos(0.0f);
+    if (!buildingLayout.empty()) {
+        const BuildingInstance& b = buildingLayout[0];
+        // if the building is on the -X side, the road is at +X. 
+        // move the camera to the front face of the building facing the road.
+        float roadDirectionX = (b.position.x < 0) ? 1.0f : -1.0f; 
+        groundCamPos = b.position + glm::vec3(roadDirectionX * (BUILDING_WIDTH / 2.0f + 0.5f), CAMERA_GROUND_HEIGHT, 0.0f);
+    }
+
     // game loop
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
@@ -253,11 +283,10 @@ int main() {
         glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-        glm::mat4 view = glm::lookAt(
-            glm::vec3(0.0f, 300.0f, 0.0f), // location
-            glm::vec3(0.0f, 0.0f, 0.0f),  // look at
-            glm::vec3(0.0f, 0.0f, -1.0f)  // up vector cant be (0, 1, 0) as that would be anti parallel to p-e
-        );
+        glm::vec3 carPos(carX, 0.0f, carZ);
+        // todo: lightPos and lightAngle
+        glm::vec3 lightPos(0.0f);
+        glm::mat4 view = camera.getViewMatrix(carPos, carAngle, groundCamPos, lightPos, 0.0f);
         
         processInput(window, deltaTime);
         windmillAngle += windmillSpeed * deltaTime;

@@ -14,6 +14,14 @@ const float CAMERA_FOV = 45.0f;
 const float CAMERA_NEAR_PLANE = 0.1f;
 const float CAMERA_FAR_PLANE = 1000.0f;
 
+const float CAMERA_SKY_HEIGHT = 120.0f;
+const float CAMERA_GROUND_HEIGHT = 4.0f; // from the building
+
+const float CAMERA_HELICOPTER_HEIGHT = 15.0f;
+const float CAMERA_HELICOPTER_DISTANCE = 25.0f;
+const float PAN_SPEED = 1.5f;                // speed of motion ground view camera
+const float GROUND_CAMERA_MAX_ANGLE = 30.0f; // degrees
+
 // Track settings
 const float TRACK_RADIUS_X = 40.0f; // outer horizontal radius
 const float TRACK_RADIUS_Z = 30.0f; // outer vertical radius
