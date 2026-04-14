@@ -1,8 +1,9 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-const float WORLD_SIZE = 100.0f;
+const float WORLD_SIZE = 150.0f;
 const float WALL_HEIGHT = 5.0f;
+const float WALL_THICKNESS = 1.0f;
 
 const float CAR_START_X = 0.0f;
 const float CAR_START_Z = 0.0f;
@@ -14,7 +15,7 @@ const float CAMERA_FOV = 45.0f;
 const float CAMERA_NEAR_PLANE = 0.1f;
 const float CAMERA_FAR_PLANE = 1000.0f;
 
-const float CAMERA_SKY_HEIGHT = 120.0f;
+const float CAMERA_SKY_HEIGHT = 200.0f;
 const float CAMERA_GROUND_HEIGHT = 4.0f; // from the building
 
 const float CAMERA_HELICOPTER_HEIGHT = 15.0f;
@@ -88,7 +89,7 @@ const float BUILDING_LIGHT_COLORS[BUILDING_LIGHT_COLOR_COUNT][3] = {
 	{0.2f, 1.0f, 1.0f},
 };
 
-const float BUILDING_LIGHT_HEIGHT_OFFSET = 0.5f;
+const float BUILDING_LIGHT_HEIGHT_OFFSET = 0.0f;
 const float BUILDING_LIGHT_BASE_DIRECTION_Y = -0.6f;
 const float BUILDING_LIGHT_SWING_BASE_SPEED = 0.35f;
 const float BUILDING_LIGHT_SWING_SPEED_STEP = 0.05f;

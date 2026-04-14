@@ -397,4 +397,34 @@ Mesh createLightGimbalHead() {
     return Mesh(vertices, indices, 0);
 }
 
+Mesh createWalls(unsigned int textureID) {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    float halfSize = WORLD_SIZE / 2.0f;
+    float yCenter = WALL_HEIGHT / 2.0f;
+
+    // north wall (+Z edge)
+    addBox(vertices, indices, 
+           glm::vec3(0.0f, yCenter, halfSize), 
+           glm::vec3(WORLD_SIZE, WALL_HEIGHT, WALL_THICKNESS));
+    
+    // south wall (-Z edge)
+    addBox(vertices, indices, 
+           glm::vec3(0.0f, yCenter, -halfSize), 
+           glm::vec3(WORLD_SIZE, WALL_HEIGHT, WALL_THICKNESS));
+
+    // east wall (+X edge)
+    addBox(vertices, indices, 
+           glm::vec3(halfSize, yCenter, 0.0f), 
+           glm::vec3(WALL_THICKNESS, WALL_HEIGHT, WORLD_SIZE + WALL_THICKNESS)); // add thickness to prevent corner gaps
+
+    // west wall (-X edge)
+    addBox(vertices, indices, 
+           glm::vec3(-halfSize, yCenter, 0.0f), 
+           glm::vec3(WALL_THICKNESS, WALL_HEIGHT, WORLD_SIZE + WALL_THICKNESS));
+
+    return Mesh(vertices, indices, textureID);
+}
+
 }  // namespace ObjectMeshes

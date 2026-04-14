@@ -383,6 +383,8 @@ int main() {
     Mesh lightGimbalBaseMesh = ObjectMeshes::createLightGimbalBase();
     Mesh lightGimbalHeadMesh = ObjectMeshes::createLightGimbalHead();
 
+    Mesh walls = ObjectMeshes::createWalls(brickTexture);
+
     ObjectRenderer::CarAppearance carAppearance = ObjectRenderer::defaultCarAppearance();
 
     glm::vec3 groundCamPos(0.0f);
@@ -445,6 +447,10 @@ int main() {
         carModel = glm::scale(carModel, glm::vec3(CAR_SCALE, CAR_SCALE, CAR_SCALE));
 
         ObjectRenderer::drawFloor(shaderProgram, projection, view, track, ground);
+
+        glm::mat4 wallTransform = glm::mat4(1.0f);
+        ObjectRenderer::drawBuilding(shaderProgram, projection, view, walls, wallTransform, glm::vec3(1.0f, 1.0f, 1.0f));
+
         ObjectRenderer::drawCar(shaderProgram,
                     projection,
                     view,
@@ -481,6 +487,7 @@ int main() {
     windmillMesh.cleanup();
     lightGimbalBaseMesh.cleanup();
     lightGimbalHeadMesh.cleanup();
+    walls.cleanup();
     for (std::vector<Mesh>& textureMeshGroup : buildingMeshes) {
         for (Mesh& buildingMesh : textureMeshGroup) {
             buildingMesh.cleanup();

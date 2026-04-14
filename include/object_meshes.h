@@ -16,6 +16,8 @@ Mesh createBuilding(int stories, unsigned int textureID);
 Mesh createWindmill();
 Mesh createLightGimbalBase();
 Mesh createLightGimbalHead();
+
+Mesh createWalls(unsigned int textureID);
 }  // namespace ObjectMeshes
 
 #endif
