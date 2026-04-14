@@ -324,4 +324,77 @@ Mesh createWindmill() {
     return Mesh(vertices, indices, 0); 
 }
 
+Mesh createLightGimbalBase() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    addBox(vertices,
+           indices,
+           glm::vec3(0.0f, BUILDING_LIGHT_GIMBAL_BASE_HEIGHT * 0.5f, 0.0f),
+           glm::vec3(BUILDING_LIGHT_GIMBAL_BASE_WIDTH,
+                     BUILDING_LIGHT_GIMBAL_BASE_HEIGHT,
+                     BUILDING_LIGHT_GIMBAL_BASE_DEPTH));
+
+    const float postHeight = BUILDING_LIGHT_GIMBAL_PIVOT_HEIGHT - BUILDING_LIGHT_GIMBAL_BASE_HEIGHT;
+    addBox(vertices,
+           indices,
+           glm::vec3(0.0f, BUILDING_LIGHT_GIMBAL_BASE_HEIGHT + (postHeight * 0.5f), 0.0f),
+           glm::vec3(BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS,
+                     postHeight,
+                     BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS));
+
+    return Mesh(vertices, indices, 0);
+}
+
+Mesh createLightGimbalHead() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    const float halfYokeSpan = BUILDING_LIGHT_GIMBAL_YOKE_WIDTH * 0.5f;
+    const float yokeLegCenterY = -BUILDING_LIGHT_GIMBAL_YOKE_HEIGHT * 0.5f;
+
+    // U-shaped yoke around the lamp, with origin at the yaw pivot.
+    addBox(vertices,
+           indices,
+           glm::vec3(0.0f, yokeLegCenterY, halfYokeSpan),
+           glm::vec3(BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS,
+                     BUILDING_LIGHT_GIMBAL_YOKE_HEIGHT,
+                     BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS));
+
+    addBox(vertices,
+           indices,
+           glm::vec3(0.0f, yokeLegCenterY, -halfYokeSpan),
+           glm::vec3(BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS,
+                     BUILDING_LIGHT_GIMBAL_YOKE_HEIGHT,
+                     BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS));
+
+    addBox(vertices,
+           indices,
+           glm::vec3(0.0f, 0.0f, 0.0f),
+           glm::vec3(BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS,
+                     BUILDING_LIGHT_GIMBAL_YOKE_BAR_THICKNESS,
+                     BUILDING_LIGHT_GIMBAL_YOKE_WIDTH));
+
+    // Lamp body points toward +X in local space.
+    addBox(vertices,
+           indices,
+           glm::vec3(BUILDING_LIGHT_LAMP_DEPTH * BUILDING_LIGHT_LAMP_CENTER_X_FACTOR,
+                     BUILDING_LIGHT_LAMP_CENTER_Y,
+                     0.0f),
+           glm::vec3(BUILDING_LIGHT_LAMP_DEPTH,
+                     BUILDING_LIGHT_LAMP_HEIGHT,
+                     BUILDING_LIGHT_LAMP_WIDTH));
+
+    addBox(vertices,
+           indices,
+           glm::vec3(BUILDING_LIGHT_LAMP_DEPTH * BUILDING_LIGHT_LAMP_NOZZLE_X_FACTOR,
+                     BUILDING_LIGHT_LAMP_CENTER_Y,
+                     0.0f),
+           glm::vec3(BUILDING_LIGHT_LAMP_DEPTH * BUILDING_LIGHT_LAMP_NOZZLE_DEPTH_FACTOR,
+                     BUILDING_LIGHT_LAMP_HEIGHT * BUILDING_LIGHT_LAMP_NOZZLE_HEIGHT_FACTOR,
+                     BUILDING_LIGHT_LAMP_WIDTH * BUILDING_LIGHT_LAMP_NOZZLE_WIDTH_FACTOR));
+
+    return Mesh(vertices, indices, 0);
+}
+
 }  // namespace ObjectMeshes

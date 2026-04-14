@@ -1,4 +1,5 @@
 #include "object_renderer.h"
+#include "constants.h"
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -25,6 +26,8 @@ void drawFloor(unsigned int shaderProgram,
 
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
+    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
 
     glEnable(GL_STENCIL_TEST);
 
@@ -72,6 +75,9 @@ void drawCar(unsigned int shaderProgram,
 
     int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
 
+    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), METAL_SHININESS);
+    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), METAL_SPECULAR_STRENGTH);
+
     glUniform3f(colorLocation,
                 appearance.frame.baseColor.r,
                 appearance.frame.baseColor.g,
@@ -82,12 +88,16 @@ void drawCar(unsigned int shaderProgram,
                 appearance.windows.baseColor.r,
                 appearance.windows.baseColor.g,
                 appearance.windows.baseColor.b);
+    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
+    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
     carWindows.draw(shaderProgram);
 
     glUniform3f(colorLocation,
                 appearance.wheels.baseColor.r,
                 appearance.wheels.baseColor.g,
                 appearance.wheels.baseColor.b);
+    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
+    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
     carWheels.draw(shaderProgram);
 }
 
@@ -102,6 +112,8 @@ void drawBuilding(unsigned int shaderProgram,
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(modelTransform));
+    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
+    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
 
     int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
     glUniform3f(colorLocation, color.r, color.g, color.b);

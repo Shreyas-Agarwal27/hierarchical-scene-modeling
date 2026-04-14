@@ -7,7 +7,7 @@
 glm::mat4 Camera::getViewMatrix(
                     glm::vec3 carPosition, float carAngle,
                     glm::vec3 groundCamPos, 
-                    glm::vec3 lightPos, float lightAngle) {
+                    glm::vec3 lightPos, glm::vec3 lightDir) {
 
     glm::vec3 up(0.0f, 1.0f, 0.0f);
     
@@ -53,8 +53,7 @@ glm::mat4 Camera::getViewMatrix(
             return glm::lookAt(groundCamPos, groundCamPos + lookDir, up);
         }
         case CameraMode::LIGHTSOURCE_VIEW: {
-            glm::vec3 lightForward(std::sin(lightAngle), -0.5f, -std::cos(lightAngle));
-            return glm::lookAt(lightPos, lightPos + lightForward, up);
+            return glm::lookAt(lightPos, lightPos + lightDir, up);
         }
     }
     return glm::mat4(1.0f);

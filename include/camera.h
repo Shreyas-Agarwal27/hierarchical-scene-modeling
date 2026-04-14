@@ -28,7 +28,7 @@ public:
     glm::mat4 getViewMatrix(
         glm::vec3 carPosition, float carAngle,
         glm::vec3 groundCamPos, 
-        glm::vec3 lightPos, float lightAngle
+        glm::vec3 lightPos, glm::vec3 lightDir
     );
 };
 
