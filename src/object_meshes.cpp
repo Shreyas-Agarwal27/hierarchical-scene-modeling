@@ -397,6 +397,15 @@ Mesh createLightGimbalHead() {
     return Mesh(vertices, indices, 0);
 }
 
+Mesh createUnitBox() {
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+
+    addBox(vertices, indices, glm::vec3(0.0f), glm::vec3(1.0f));
+
+    return Mesh(vertices, indices, 0);
+}
+
 Mesh createWalls(unsigned int textureID) {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;

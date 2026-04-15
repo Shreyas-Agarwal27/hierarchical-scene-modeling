@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include "constants.h"
+#include "collision.h"
 #include "mesh.h"
 #include "object_meshes.h"
 #include "object_renderer.h"
@@ -24,10 +25,13 @@ float lastFrame = 0.0f;
 float frameTimer = 0.0f;
 int frameCount = 0;
 
-float carSpeed = 5.0f;
+float carSpeed = CAR_DEFAULT_SPEED;
 float carX = CAR_START_X;
 float carZ = CAR_START_Z;
-float carAngle = 0.0f;
+float carAngle = glm::radians(CAR_START_ANGLE_DEG);
+bool carCrashed = false;
+bool showHitboxes = false;
+bool resetWorldRequested = false;
 
 float windmillAngle = 0.0f;
 float windmillSpeed = WINDMILL_DEFAULT_SPEED;
@@ -50,6 +54,65 @@ struct BuildingInstance {
     int stories;
     std::size_t textureIndex;
 };
+
+struct StaticObstacle {
+    Collision::AABB2D bounds;
+    float height;
+};
+
+Collision::AABB2D createAABBFromCenter(float centerX, float centerZ, float sizeX, float sizeZ) {
+    const float halfX = sizeX * 0.5f;
+    const float halfZ = sizeZ * 0.5f;
+
+    return {
+        centerX - halfX,
+        centerX + halfX,
+        centerZ - halfZ,
+        centerZ + halfZ,
+    };
+}
+
+std::vector<StaticObstacle> createStaticObstacles(const std::vector<BuildingInstance>& buildings) {
+    std::vector<StaticObstacle> obstacles;
+    obstacles.reserve(buildings.size() + 4);
+
+    for (const BuildingInstance& building : buildings) {
+        obstacles.push_back({
+            createAABBFromCenter(building.position.x, building.position.z, BUILDING_WIDTH, BUILDING_DEPTH),
+            static_cast<float>(building.stories) * BUILDING_STORY_HEIGHT,
+        });
+    }
+
+    const float halfSize = WORLD_SIZE * 0.5f;
+    const float verticalWallDepth = WORLD_SIZE + WALL_THICKNESS;
+
+    obstacles.push_back({createAABBFromCenter(0.0f, halfSize, WORLD_SIZE, WALL_THICKNESS), WALL_HEIGHT});
+    obstacles.push_back({createAABBFromCenter(0.0f, -halfSize, WORLD_SIZE, WALL_THICKNESS), WALL_HEIGHT});
+    obstacles.push_back({createAABBFromCenter(halfSize, 0.0f, WALL_THICKNESS, verticalWallDepth), WALL_HEIGHT});
+    obstacles.push_back({createAABBFromCenter(-halfSize, 0.0f, WALL_THICKNESS, verticalWallDepth), WALL_HEIGHT});
+
+    return obstacles;
+}
+
+std::vector<Collision::AABB2D> extractAABBs(const std::vector<StaticObstacle>& obstacles) {
+    std::vector<Collision::AABB2D> aabbs;
+    aabbs.reserve(obstacles.size());
+
+    for (const StaticObstacle& obstacle : obstacles) {
+        aabbs.push_back(obstacle.bounds);
+    }
+
+    return aabbs;
+}
+
+Collision::OBB2D carHitboxAt(float x, float z, float angleRadians) {
+    return {
+        glm::vec2(x, z),
+        CAR_HITBOX_LENGTH * 0.5f,
+        CAR_HITBOX_WIDTH * 0.5f,
+        angleRadians,
+    };
+}
 
 int storyCountForBuildingIndex(int buildingIndex) {
     const int storyVariantCount = BUILDING_MAX_STORIES - BUILDING_MIN_STORIES + 1;
@@ -272,7 +335,67 @@ void setupLighting(unsigned int shaderProgram, std::vector<BuildingLight>& light
     }
 }
 
+void drawHitboxes(unsigned int shaderProgram,
+                 const glm::mat4& projection,
+                 const glm::mat4& view,
+                 Mesh& unitBoxMesh,
+                 const std::vector<StaticObstacle>& obstacles,
+                 float currentCarX,
+                 float currentCarZ,
+                 float currentCarAngle) {
+    glLineWidth(HITBOX_LINE_WIDTH);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    for (const StaticObstacle& obstacle : obstacles) {
+        const float width = (obstacle.bounds.maxX - obstacle.bounds.minX) + (2.0f * HITBOX_VISUAL_PADDING);
+        const float depth = (obstacle.bounds.maxZ - obstacle.bounds.minZ) + (2.0f * HITBOX_VISUAL_PADDING);
+        const float height = obstacle.height + HITBOX_VISUAL_PADDING;
+        const float centerX = 0.5f * (obstacle.bounds.minX + obstacle.bounds.maxX);
+        const float centerZ = 0.5f * (obstacle.bounds.minZ + obstacle.bounds.maxZ);
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(centerX, height * 0.5f, centerZ));
+        model = glm::scale(model, glm::vec3(width, height, depth));
+
+        ObjectRenderer::drawBuilding(shaderProgram,
+                                     projection,
+                                     view,
+                                     unitBoxMesh,
+                                     model,
+                                     glm::vec3(1.0f, 0.15f, 0.15f));
+    }
+
+    glm::mat4 carHitboxModel = glm::mat4(1.0f);
+    carHitboxModel = glm::translate(carHitboxModel, glm::vec3(currentCarX, CAR_HITBOX_HEIGHT * 0.5f, currentCarZ));
+    carHitboxModel = glm::rotate(carHitboxModel, currentCarAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+    carHitboxModel = glm::scale(carHitboxModel,
+                                glm::vec3(CAR_HITBOX_LENGTH + (2.0f * HITBOX_VISUAL_PADDING),
+                                          CAR_HITBOX_HEIGHT + HITBOX_VISUAL_PADDING,
+                                          CAR_HITBOX_WIDTH + (2.0f * HITBOX_VISUAL_PADDING)));
+
+    ObjectRenderer::drawBuilding(shaderProgram,
+                                 projection,
+                                 view,
+                                 unitBoxMesh,
+                                 carHitboxModel,
+                                 glm::vec3(0.2f, 1.0f, 0.2f));
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glLineWidth(1.0f);
+}
+
 }  // namespace
+
+void resetWorldState() {
+    carSpeed = CAR_DEFAULT_SPEED;
+    carX = CAR_START_X;
+    carZ = CAR_START_Z;
+    carAngle = glm::radians(CAR_START_ANGLE_DEG);
+    carCrashed = false;
+
+    windmillAngle = 0.0f;
+    windmillSpeed = WINDMILL_DEFAULT_SPEED;
+}
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -284,6 +407,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if (key == GLFW_KEY_3) camera.setMode(CameraMode::GROUND_VIEW);
         if (key == GLFW_KEY_4) camera.setMode(CameraMode::LIGHTSOURCE_VIEW);
         if (key == GLFW_KEY_5) camera.setMode(CameraMode::HELICOPTER_CAM);
+        if (key == GLFW_KEY_B) showHitboxes = !showHitboxes;
+        if (key == GLFW_KEY_SPACE) resetWorldRequested = true;
     }
 
     if (camera.currentMode == CameraMode::GROUND_VIEW) {
@@ -298,20 +423,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 void processInput(GLFWwindow *window, float deltaTime) {
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-        carSpeed += (CAR_SPEED_INC * 50.0f) * deltaTime; 
-    }
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        carSpeed -= (CAR_SPEED_INC * 50.0f) * deltaTime;
-    }
-
-    if (carSpeed != 0.0f) {
-        // Multiply by 50 to scale the turn increment nicely with deltaTime
-        if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
-            carAngle += glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
+    if (!carCrashed) {
+        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+            carSpeed += (CAR_SPEED_INC * 50.0f) * deltaTime;
         }
-        if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-            carAngle -= glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            carSpeed -= (CAR_SPEED_INC * 50.0f) * deltaTime;
+        }
+
+        if (carSpeed != 0.0f) {
+            // Multiply by 50 to scale the turn increment nicely with deltaTime
+            if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
+                carAngle += glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
+            }
+            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+                carAngle -= glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
+            }
         }
     }
 
@@ -378,10 +505,13 @@ int main() {
     std::vector<std::vector<Mesh>> buildingMeshes = createBuildingMeshes(buildingTextures);
     std::vector<BuildingInstance> buildingLayout = createBuildingLayout(buildingTextures.size());
     std::vector<BuildingLight> buildingLights = createBuildingLights(buildingLayout);
+    std::vector<StaticObstacle> staticObstacles = createStaticObstacles(buildingLayout);
+    std::vector<Collision::AABB2D> staticObstacleAABBs = extractAABBs(staticObstacles);
 
     Mesh windmillMesh = ObjectMeshes::createWindmill();
     Mesh lightGimbalBaseMesh = ObjectMeshes::createLightGimbalBase();
     Mesh lightGimbalHeadMesh = ObjectMeshes::createLightGimbalHead();
+    Mesh hitboxUnitBox = ObjectMeshes::createUnitBox();
 
     Mesh walls = ObjectMeshes::createWalls(brickTexture);
 
@@ -417,6 +547,11 @@ int main() {
         glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+        if (resetWorldRequested) {
+            resetWorldState();
+            resetWorldRequested = false;
+        }
+
         glm::vec3 carPos(carX, 0.0f, carZ);
         glm::vec3 activeLightDir(DEFAULT_LIGHTSOURCE_VIEW_DIR_X,
                      DEFAULT_LIGHTSOURCE_VIEW_DIR_Y,
@@ -438,8 +573,20 @@ int main() {
         if (windmillAngle > glm::two_pi<float>()) windmillAngle -= glm::two_pi<float>();
         if (windmillAngle < -glm::two_pi<float>()) windmillAngle += glm::two_pi<float>();
 
-        carX += carSpeed * std::cos(carAngle) * deltaTime;
-        carZ += carSpeed * -std::sin(carAngle) * deltaTime; 
+        if (!carCrashed) {
+            const float nextCarX = carX + (carSpeed * std::cos(carAngle) * deltaTime);
+            const float nextCarZ = carZ + (carSpeed * -std::sin(carAngle) * deltaTime);
+
+            const Collision::OBB2D nextCarOBB = carHitboxAt(nextCarX, nextCarZ, carAngle);
+            if (Collision::intersectsAny(nextCarOBB, staticObstacleAABBs, COLLISION_SAT_EPSILON)) {
+                carCrashed = true;
+                carSpeed = 0.0f;
+            }
+            else {
+                carX = nextCarX;
+                carZ = nextCarZ;
+            }
+        }
 
         glm::mat4 carModel = glm::mat4(1.0f);
         carModel = glm::translate(carModel, glm::vec3(carX, 0.0f, carZ));
@@ -471,6 +618,17 @@ int main() {
                        lightGimbalHeadMesh,
                        windmillAngle,
                        currentFrame);
+
+        if (showHitboxes) {
+            drawHitboxes(shaderProgram,
+                         projection,
+                         view,
+                         hitboxUnitBox,
+                         staticObstacles,
+                         carX,
+                         carZ,
+                         carAngle);
+        }
         
 
         // glfw: swap buffers and poll IO events
@@ -487,6 +645,7 @@ int main() {
     windmillMesh.cleanup();
     lightGimbalBaseMesh.cleanup();
     lightGimbalHeadMesh.cleanup();
+    hitboxUnitBox.cleanup();
     walls.cleanup();
     for (std::vector<Mesh>& textureMeshGroup : buildingMeshes) {
         for (Mesh& buildingMesh : textureMeshGroup) {

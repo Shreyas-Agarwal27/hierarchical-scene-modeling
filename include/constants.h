@@ -7,6 +7,8 @@ const float WALL_THICKNESS = 1.0f;
 
 const float CAR_START_X = 0.0f;
 const float CAR_START_Z = 0.0f;
+const float CAR_START_ANGLE_DEG = 0.0f;
+const float CAR_DEFAULT_SPEED = 5.0f;
 const float CAR_SPEED_INC = 0.1f;
 const float CAR_TURN_INC = 2.0f; // degrees
 
@@ -57,7 +59,7 @@ const float CAR_CABIN_LENGTH = 8.2f;
 const float CAR_CABIN_HEIGHT = 3.0f;
 const float CAR_CABIN_WIDTH = 7.2f;
 const float CAR_CABIN_OFFSET_X = -2.0f;
-const float CAR_CABIN_OFFSET_Y = 7.7f;
+const float CAR_CABIN_OFFSET_Y = 0.0f;
 const float CAR_CABIN_OFFSET_Z = 0.0f;
 
 const float CAR_WINDOW_THICKNESS = 0.60f;
@@ -65,6 +67,15 @@ const float CAR_WINDOW_HEIGHT = 2.25f;
 
 const float CAR_WHEEL_X_RATIO = 0.625f; // how far the wheels are pushed toward the front bumper
 const float CAR_WHEEL_Z_PROTRUSION = 0.5f; // how far the wheels pop out from the sides of the car
+
+// Collision settings
+const float CAR_HITBOX_LENGTH = CAR_FRAME_LENGTH * CAR_SCALE;
+const float CAR_HITBOX_WIDTH = (CAR_FRAME_WIDTH + (2.0f * CAR_WHEEL_Z_PROTRUSION)) * CAR_SCALE;
+const float CAR_HITBOX_HEIGHT = (CAR_CABIN_OFFSET_Y + (0.5f * CAR_CABIN_HEIGHT)) * CAR_SCALE;
+
+const float COLLISION_SAT_EPSILON = 0.01f;
+const float HITBOX_VISUAL_PADDING = 0.08f;
+const float HITBOX_LINE_WIDTH = 2.0f;
 
 // Windmill settings
 const float WINDMILL_RADIUS = 2.5f;
