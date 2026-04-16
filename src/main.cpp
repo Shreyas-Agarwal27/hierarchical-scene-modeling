@@ -3,12 +3,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <array>
 #include <cmath>
+#include <exception>
 #include <iostream>
 #include <vector>
 #include <algorithm>
 
 #include "constants.h"
+#include "building_models.h"
 #include "collision.h"
 #include "mesh.h"
 #include "object_meshes.h"
@@ -49,11 +52,47 @@ struct BuildingLight {
     float swingSpeed = BUILDING_LIGHT_SWING_BASE_SPEED;
 };
 
-struct BuildingInstance {
-    glm::vec3 position;
-    int stories;
-    std::size_t textureIndex;
+struct LightingUniformLocations {
+    int viewPos = -1;
+    int globalAmbientStrength = -1;
+    int spotlightAmbientStrength = -1;
+    int numBuildingLights = -1;
+    std::array<int, MAX_BUILDING_LIGHTS> position{};
+    std::array<int, MAX_BUILDING_LIGHTS> direction{};
+    std::array<int, MAX_BUILDING_LIGHTS> color{};
+    std::array<int, MAX_BUILDING_LIGHTS> cutOff{};
+    std::array<int, MAX_BUILDING_LIGHTS> outerCutOff{};
+    std::array<int, MAX_BUILDING_LIGHTS> constant{};
+    std::array<int, MAX_BUILDING_LIGHTS> linear{};
+    std::array<int, MAX_BUILDING_LIGHTS> quadratic{};
 };
+
+LightingUniformLocations gLightingUniforms;
+unsigned int gLightingUniformProgram = 0;
+
+void cacheLightingUniformLocations(unsigned int shaderProgram) {
+    if (gLightingUniformProgram == shaderProgram) {
+        return;
+    }
+
+    gLightingUniformProgram = shaderProgram;
+    gLightingUniforms.viewPos = glGetUniformLocation(shaderProgram, "viewPos");
+    gLightingUniforms.globalAmbientStrength = glGetUniformLocation(shaderProgram, "globalAmbientStrength");
+    gLightingUniforms.spotlightAmbientStrength = glGetUniformLocation(shaderProgram, "spotlightAmbientStrength");
+    gLightingUniforms.numBuildingLights = glGetUniformLocation(shaderProgram, "numBuildingLights");
+
+    for (int i = 0; i < MAX_BUILDING_LIGHTS; ++i) {
+        const std::string prefix = "buildingLights[" + std::to_string(i) + "].";
+        gLightingUniforms.position[i] = glGetUniformLocation(shaderProgram, (prefix + "position").c_str());
+        gLightingUniforms.direction[i] = glGetUniformLocation(shaderProgram, (prefix + "direction").c_str());
+        gLightingUniforms.color[i] = glGetUniformLocation(shaderProgram, (prefix + "color").c_str());
+        gLightingUniforms.cutOff[i] = glGetUniformLocation(shaderProgram, (prefix + "cutOff").c_str());
+        gLightingUniforms.outerCutOff[i] = glGetUniformLocation(shaderProgram, (prefix + "outerCutOff").c_str());
+        gLightingUniforms.constant[i] = glGetUniformLocation(shaderProgram, (prefix + "constant").c_str());
+        gLightingUniforms.linear[i] = glGetUniformLocation(shaderProgram, (prefix + "linear").c_str());
+        gLightingUniforms.quadratic[i] = glGetUniformLocation(shaderProgram, (prefix + "quadratic").c_str());
+    }
+}
 
 struct StaticObstacle {
     Collision::AABB2D bounds;
@@ -72,14 +111,17 @@ Collision::AABB2D createAABBFromCenter(float centerX, float centerZ, float sizeX
     };
 }
 
-std::vector<StaticObstacle> createStaticObstacles(const std::vector<BuildingInstance>& buildings) {
+std::vector<StaticObstacle> createStaticObstacles(const std::vector<BuildingModels::Instance>& buildings) {
     std::vector<StaticObstacle> obstacles;
     obstacles.reserve(buildings.size() + 4);
 
-    for (const BuildingInstance& building : buildings) {
+    for (const BuildingModels::Instance& building : buildings) {
         obstacles.push_back({
-            createAABBFromCenter(building.position.x, building.position.z, BUILDING_WIDTH, BUILDING_DEPTH),
-            static_cast<float>(building.stories) * BUILDING_STORY_HEIGHT,
+            createAABBFromCenter(building.position.x,
+                                 building.position.z,
+                                 building.halfWidth * 2.0f,
+                                 building.halfDepth * 2.0f),
+            building.roofY,
         });
     }
 
@@ -113,75 +155,22 @@ Collision::OBB2D carHitboxAt(float x, float z, float angleRadians) {
         angleRadians,
     };
 }
-
-int storyCountForBuildingIndex(int buildingIndex) {
-    const int storyVariantCount = BUILDING_MAX_STORIES - BUILDING_MIN_STORIES + 1;
-    return BUILDING_MIN_STORIES + (buildingIndex % storyVariantCount);
-}
-
-std::size_t textureIndexForBuildingIndex(int buildingIndex, std::size_t textureCount) {
-    return static_cast<std::size_t>(buildingIndex) % textureCount;
-}
-
-std::vector<BuildingInstance> createBuildingLayout(std::size_t textureCount) {
-    std::vector<BuildingInstance> buildings;
-    buildings.reserve(BUILDING_COUNT);
-
-    const float xOffset = TRACK_RADIUS_X + BUILDING_SIDE_CLEARANCE + (BUILDING_WIDTH * 0.5f);
-    const float zStart = -0.5f * BUILDING_SIDE_Z_SPACING * static_cast<float>(BUILDINGS_PER_SIDE - 1);
-
-    for (int side = 0; side < BUILDING_SIDES; ++side) {
-        const float sideSign = (side == 0) ? -1.0f : 1.0f;
-        const float xPos = sideSign * xOffset;
-
-        for (int slot = 0; slot < BUILDINGS_PER_SIDE; ++slot) {
-            const int buildingIndex = side * BUILDINGS_PER_SIDE + slot;
-            const float zPos = zStart + (static_cast<float>(slot) * BUILDING_SIDE_Z_SPACING);
-
-            buildings.push_back({
-                glm::vec3(xPos, 0.0f, zPos),
-                storyCountForBuildingIndex(buildingIndex),
-                textureIndexForBuildingIndex(buildingIndex, textureCount),
-            });
-        }
-    }
-
-    return buildings;
-}
-
-std::vector<BuildingLight> createBuildingLights(const std::vector<BuildingInstance>& buildings) {
+std::vector<BuildingLight> createBuildingLights(const BuildingModels::Scene& scene) {
     std::vector<BuildingLight> lights;
 
-    const std::size_t maxLights = std::min(buildings.size(), static_cast<std::size_t>(MAX_BUILDING_LIGHTS));
-    lights.reserve(maxLights);
+    std::vector<BuildingModels::LightRigConfig> rigConfigs = BuildingModels::createLightRigConfigs(scene);
+    lights.reserve(rigConfigs.size());
 
-    for (std::size_t i = 0; i < maxLights; i++) {
+    for (const BuildingModels::LightRigConfig& rig : rigConfigs) {
         BuildingLight light;
-        float roofY = buildings[i].stories * BUILDING_STORY_HEIGHT;
-        glm::vec3 roofAnchor = buildings[i].position + glm::vec3(0.0f, roofY + BUILDING_LIGHT_HEIGHT_OFFSET, 0.0f);
-        
-        // Point down and towards the road
-        if (buildings[i].position.x > 0) {
-            light.baseDirection = glm::normalize(glm::vec3(-1.0f, BUILDING_LIGHT_BASE_DIRECTION_Y, 0.0f));
-        }
-        else {
-            light.baseDirection = glm::normalize(glm::vec3(1.0f, BUILDING_LIGHT_BASE_DIRECTION_Y, 0.0f));
-        }
-
-        const glm::vec3 horizontalRoadForward = glm::normalize(glm::vec3(light.baseDirection.x, 0.0f, light.baseDirection.z));
-        light.basePosition = roofAnchor
-                             + glm::vec3(0.0f,
-                                         BUILDING_LIGHT_GIMBAL_PIVOT_HEIGHT + BUILDING_LIGHT_LAMP_CENTER_Y,
-                                         0.0f)
-                             + (horizontalRoadForward * (BUILDING_LIGHT_LAMP_DEPTH * BUILDING_LIGHT_LAMP_NOZZLE_X_FACTOR));
-
-        light.color = glm::vec3(BUILDING_LIGHT_COLORS[i % BUILDING_LIGHT_COLOR_COUNT][0],
-                                BUILDING_LIGHT_COLORS[i % BUILDING_LIGHT_COLOR_COUNT][1],
-                                BUILDING_LIGHT_COLORS[i % BUILDING_LIGHT_COLOR_COUNT][2]);
+        light.basePosition = rig.basePosition;
+        light.baseDirection = rig.baseDirection;
+        light.color = rig.color;
         light.currentSwingAngle = 0.0f;
-        light.swingSpeed = BUILDING_LIGHT_SWING_BASE_SPEED + (static_cast<float>(i) * BUILDING_LIGHT_SWING_SPEED_STEP);
+        light.swingSpeed = rig.swingSpeed;
         lights.push_back(light);
     }
+
     return lights;
 }
 
@@ -195,65 +184,119 @@ glm::vec3 directionForLight(const BuildingLight& light, float time) {
     return glm::normalize(glm::vec3(rotation * glm::vec4(light.baseDirection, 0.0f)));
 }
 
-std::vector<std::vector<Mesh>> createBuildingMeshes(const std::vector<unsigned int>& textureIDs) {
-    std::vector<std::vector<Mesh>> meshesByTexture;
-    meshesByTexture.reserve(textureIDs.size());
-
-    for (unsigned int textureID : textureIDs) {
-        std::vector<Mesh> meshesForTexture;
-        meshesForTexture.reserve(BUILDING_MAX_STORIES - BUILDING_MIN_STORIES + 1);
-
-        for (int stories = BUILDING_MIN_STORIES; stories <= BUILDING_MAX_STORIES; ++stories) {
-            meshesForTexture.push_back(ObjectMeshes::createBuilding(stories, textureID));
-        }
-
-        meshesByTexture.push_back(std::move(meshesForTexture));
-    }
-
-    return meshesByTexture;
+glm::vec3 windmillCenterForBuilding(const BuildingModels::Instance& building) {
+    const float edgeOffset = std::max(0.0f, building.halfWidth - BUILDING_ROOF_ATTACHMENT_EDGE_MARGIN);
+    return BuildingModels::roofCenter(building)
+        + glm::vec3(BuildingModels::roadFacingSignX(building) * edgeOffset, 0.0f, 0.0f);
 }
 
-Mesh& meshForBuilding(std::vector<std::vector<Mesh>>& buildingMeshes, const BuildingInstance& building) {
-    return buildingMeshes[building.textureIndex][building.stories - BUILDING_MIN_STORIES];
+float gimbalFacingYawRadians(const BuildingModels::Instance& building) {
+    // Gimbal mesh lamp body points toward +X in local space.
+    // Use configured yaw so lamp forward aligns with road-facing +/-X.
+    return (BuildingModels::roadFacingSignX(building) > 0.0f)
+        ? glm::radians(BUILDING_LIGHT_ROAD_FACING_YAW_NEGATIVE_X_DEG)
+        : glm::radians(BUILDING_LIGHT_ROAD_FACING_YAW_POSITIVE_X_DEG);
+}
+
+float windmillBeamTransmission(const BuildingModels::Instance& building,
+                               const BuildingLight& light,
+                               const glm::vec3& lightDirection,
+                               float currentWindmillAngle) {
+    const glm::vec3 windmillCenter = windmillCenterForBuilding(building);
+    const glm::vec3 rotorAxis = glm::vec3(BuildingModels::roadFacingSignX(building), 0.0f, 0.0f);
+
+    const float denom = glm::dot(lightDirection, rotorAxis);
+    if (std::abs(denom) < WINDMILL_LIGHT_OCCLUSION_PARALLEL_EPSILON) {
+        return 1.0f;
+    }
+
+    const float t = glm::dot(windmillCenter - light.basePosition, rotorAxis) / denom;
+    if (t <= 0.0f) {
+        return 1.0f;
+    }
+
+    const glm::vec3 intersection = light.basePosition + (lightDirection * t);
+    const glm::vec3 relative = intersection - windmillCenter;
+    const glm::vec3 relativeOnDisk = relative - (rotorAxis * glm::dot(relative, rotorAxis));
+
+    const float radialDistance = glm::length(relativeOnDisk);
+    const float diskMask = 1.0f - glm::smoothstep(WINDMILL_RADIUS - WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                                   WINDMILL_RADIUS + WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                                   radialDistance);
+
+    if (diskMask <= 0.0f) {
+        return 1.0f;
+    }
+
+    const float hubRadius = WINDMILL_BLADE_WIDTH * WINDMILL_LIGHT_HUB_RADIUS_FACTOR;
+    const float hubOcclusion = diskMask
+        * (1.0f - glm::smoothstep(hubRadius - WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                  hubRadius + WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                  radialDistance));
+
+    glm::mat4 rotorRotation(1.0f);
+    rotorRotation = glm::rotate(rotorRotation, BuildingModels::roadFacingYawRadians(building), glm::vec3(0.0f, 1.0f, 0.0f));
+    rotorRotation = glm::rotate(rotorRotation, currentWindmillAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+
+    const glm::vec3 bladeAxisA = glm::normalize(glm::vec3(rotorRotation * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+    const glm::vec3 bladeAxisB = glm::normalize(glm::vec3(rotorRotation * glm::vec4(1.0f, 0.0f, 0.0f, 0.0f)));
+
+    auto bladeOcclusionForAxis = [&](const glm::vec3& axis) {
+        const float along = std::abs(glm::dot(relativeOnDisk, axis));
+        const glm::vec3 perpendicular = relativeOnDisk - (axis * glm::dot(relativeOnDisk, axis));
+        const float perpDistance = glm::length(perpendicular);
+
+        const float lengthMask = 1.0f - glm::smoothstep(WINDMILL_RADIUS - WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                                        WINDMILL_RADIUS + WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                                        along);
+        const float widthMask = 1.0f - glm::smoothstep((WINDMILL_BLADE_WIDTH * 0.5f) - WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                                       (WINDMILL_BLADE_WIDTH * 0.5f) + WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE,
+                                                       perpDistance);
+
+        return diskMask * lengthMask * widthMask;
+    };
+
+    const float bladeOcclusion = std::max(bladeOcclusionForAxis(bladeAxisA),
+                                          bladeOcclusionForAxis(bladeAxisB));
+
+    const float hubDarkness = hubOcclusion * (1.0f - WINDMILL_LIGHT_HUB_MIN_TRANSMISSION);
+    const float bladeDarkness = bladeOcclusion * (1.0f - WINDMILL_LIGHT_BLADE_MIN_TRANSMISSION);
+    const float totalDarkness = std::max(hubDarkness, bladeDarkness);
+
+    return glm::clamp(1.0f - totalDarkness, 0.0f, 1.0f);
 }
 
 void drawBuildings(unsigned int shaderProgram,
                             const glm::mat4& projection,
                             const glm::mat4& view,
-                            std::vector<std::vector<Mesh>>& buildingMeshes,
-                            const std::vector<BuildingInstance>& buildingLayout,
+                            BuildingModels::Scene& towerScene,
                             const std::vector<BuildingLight>& buildingLights,
                             Mesh& windmillMesh,
                             Mesh& lightGimbalBaseMesh,
                             Mesh& lightGimbalHeadMesh,
                             float currentWindmillAngle,
                             float currentTime) {
-    for (std::size_t buildingIndex = 0; buildingIndex < buildingLayout.size(); ++buildingIndex) {
-        const BuildingInstance& building = buildingLayout[buildingIndex];
+    for (std::size_t buildingIndex = 0; buildingIndex < towerScene.instances.size(); ++buildingIndex) {
+        const BuildingModels::Instance& building = towerScene.instances[buildingIndex];
 
         // draw building
-        glm::mat4 buildingTransform = glm::mat4(1.0f);
-        buildingTransform = glm::translate(buildingTransform, building.position);
+        const glm::mat4 buildingTransform = BuildingModels::modelTransformFor(towerScene, building);
 
         ObjectRenderer::drawBuilding(shaderProgram,
                                      projection,
                                      view,
-                                     meshForBuilding(buildingMeshes, building),
+                                     BuildingModels::meshFor(towerScene, building),
                                      buildingTransform,
                                      glm::vec3(BUILDING_COLOR_R, BUILDING_COLOR_G, BUILDING_COLOR_B));
-
-        float buildingHeight = building.stories * BUILDING_STORY_HEIGHT;
 
         if (buildingIndex < buildingLights.size()) {
             const BuildingLight& light = buildingLights[buildingIndex];
 
-            glm::mat4 gimbalBaseTransform = buildingTransform;
+            glm::mat4 gimbalBaseTransform = glm::mat4(1.0f);
             gimbalBaseTransform = glm::translate(gimbalBaseTransform,
-                                                 glm::vec3(0.0f, buildingHeight + BUILDING_LIGHT_HEIGHT_OFFSET, 0.0f));
+                                                 BuildingModels::roofCenter(building) + glm::vec3(0.0f, BUILDING_LIGHT_HEIGHT_OFFSET, 0.0f));
 
-            const float roadFacingYaw = (building.position.x > 0.0f)
-                ? glm::radians(BUILDING_LIGHT_ROAD_FACING_YAW_POSITIVE_X_DEG)
-                : glm::radians(BUILDING_LIGHT_ROAD_FACING_YAW_NEGATIVE_X_DEG);
+            const float roadFacingYaw = gimbalFacingYawRadians(building);
             gimbalBaseTransform = glm::rotate(gimbalBaseTransform, roadFacingYaw, glm::vec3(0.0f, 1.0f, 0.0f));
 
             const glm::vec3 gimbalColor = light.color;
@@ -279,21 +322,11 @@ void drawBuildings(unsigned int shaderProgram,
                                          gimbalHeadTransform,
                                          gimbalColor);
         }
-        
-        // draw widnmill: start with the building's transform, then move to the top
-        glm::mat4 windmillTransform = buildingTransform; 
-        windmillTransform = glm::translate(windmillTransform, glm::vec3(0.0f, buildingHeight, 0.0f));
 
-        // if the building is on the +X side, the road is to its left (-X).
-        // if the building is on the -X side, the road is to its right (+X).
-        if (building.position.x > 0) {
-            windmillTransform = glm::translate(windmillTransform, glm::vec3(-BUILDING_WIDTH / 2.0f, 0.0f, 0.0f));
-            windmillTransform = glm::rotate(windmillTransform, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        }
-        else {
-            windmillTransform = glm::translate(windmillTransform, glm::vec3(BUILDING_WIDTH / 2.0f, 0.0f, 0.0f));
-            windmillTransform = glm::rotate(windmillTransform, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        }
+        glm::mat4 windmillTransform = glm::mat4(1.0f);
+        windmillTransform = glm::translate(windmillTransform,
+                                           windmillCenterForBuilding(building));
+        windmillTransform = glm::rotate(windmillTransform, BuildingModels::roadFacingYawRadians(building), glm::vec3(0.0f, 1.0f, 0.0f));
 
         windmillTransform = glm::rotate(windmillTransform, currentWindmillAngle, glm::vec3(0.0f, 0.0f, 1.0f));
 
@@ -305,33 +338,47 @@ void drawBuildings(unsigned int shaderProgram,
     }
 }
 
-void setupLighting(unsigned int shaderProgram, std::vector<BuildingLight>& lights, const glm::vec3& viewPos, float time) {
+void setupLighting(unsigned int shaderProgram,
+                   std::vector<BuildingLight>& lights,
+                   const BuildingModels::Scene& towerScene,
+                   float currentWindmillAngle,
+                   const glm::vec3& viewPos,
+                   float time) {
+    cacheLightingUniformLocations(shaderProgram);
+
     glUseProgram(shaderProgram);
-    glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(viewPos));
-    glUniform1f(glGetUniformLocation(shaderProgram, "globalAmbientStrength"), GLOBAL_AMBIENT_STRENGTH);
-    glUniform1f(glGetUniformLocation(shaderProgram, "spotlightAmbientStrength"), SPOTLIGHT_AMBIENT_STRENGTH);
+    glUniform3fv(gLightingUniforms.viewPos, 1, glm::value_ptr(viewPos));
+    glUniform1f(gLightingUniforms.globalAmbientStrength, GLOBAL_AMBIENT_STRENGTH);
+    glUniform1f(gLightingUniforms.spotlightAmbientStrength, SPOTLIGHT_AMBIENT_STRENGTH);
 
     const int activeLightCount = std::min(static_cast<int>(lights.size()), MAX_BUILDING_LIGHTS);
-    glUniform1i(glGetUniformLocation(shaderProgram, "numBuildingLights"), activeLightCount);
+    glUniform1i(gLightingUniforms.numBuildingLights, activeLightCount);
 
     for (int i = 0; i < activeLightCount; i++) {
-        std::string prefix = "buildingLights[" + std::to_string(i) + "].";
-
         lights[i].currentSwingAngle = swingAngleForLight(lights[i], time);
         glm::vec3 currentDir = directionForLight(lights[i], time);
+        glm::vec3 effectiveColor = lights[i].color;
 
-        glUniform3fv(glGetUniformLocation(shaderProgram, (prefix + "position").c_str()), 1, glm::value_ptr(lights[i].basePosition));
-        glUniform3fv(glGetUniformLocation(shaderProgram, (prefix + "direction").c_str()), 1, glm::value_ptr(currentDir));
-        glUniform3fv(glGetUniformLocation(shaderProgram, (prefix + "color").c_str()), 1, glm::value_ptr(lights[i].color));
+        if (i < static_cast<int>(towerScene.instances.size())) {
+            const float transmission = windmillBeamTransmission(towerScene.instances[static_cast<std::size_t>(i)],
+                                                                lights[i],
+                                                                currentDir,
+                                                                currentWindmillAngle);
+            effectiveColor *= transmission;
+        }
+
+        glUniform3fv(gLightingUniforms.position[i], 1, glm::value_ptr(lights[i].basePosition));
+        glUniform3fv(gLightingUniforms.direction[i], 1, glm::value_ptr(currentDir));
+        glUniform3fv(gLightingUniforms.color[i], 1, glm::value_ptr(effectiveColor));
         
         // Spotlight cone geometry
-        glUniform1f(glGetUniformLocation(shaderProgram, (prefix + "cutOff").c_str()), glm::cos(glm::radians(BUILDING_LIGHT_INNER_CUTOFF_DEG)));
-        glUniform1f(glGetUniformLocation(shaderProgram, (prefix + "outerCutOff").c_str()), glm::cos(glm::radians(BUILDING_LIGHT_OUTER_CUTOFF_DEG)));
+        glUniform1f(gLightingUniforms.cutOff[i], glm::cos(glm::radians(BUILDING_LIGHT_INNER_CUTOFF_DEG)));
+        glUniform1f(gLightingUniforms.outerCutOff[i], glm::cos(glm::radians(BUILDING_LIGHT_OUTER_CUTOFF_DEG)));
         
         // Attenuation configuration for realistic falloff
-        glUniform1f(glGetUniformLocation(shaderProgram, (prefix + "constant").c_str()), BUILDING_LIGHT_ATTENUATION_CONSTANT);
-        glUniform1f(glGetUniformLocation(shaderProgram, (prefix + "linear").c_str()), BUILDING_LIGHT_ATTENUATION_LINEAR);
-        glUniform1f(glGetUniformLocation(shaderProgram, (prefix + "quadratic").c_str()), BUILDING_LIGHT_ATTENUATION_QUADRATIC);
+        glUniform1f(gLightingUniforms.constant[i], BUILDING_LIGHT_ATTENUATION_CONSTANT);
+        glUniform1f(gLightingUniforms.linear[i], BUILDING_LIGHT_ATTENUATION_LINEAR);
+        glUniform1f(gLightingUniforms.quadratic[i], BUILDING_LIGHT_ATTENUATION_QUADRATIC);
     }
 }
 
@@ -485,8 +532,7 @@ int main() {
     unsigned int groundTexture = loadTexture("textures/grass.png");
     unsigned int trackTexture = loadTexture("textures/road.png");
     unsigned int brickTexture = loadTexture("textures/brick.jpg");
-    unsigned int woodTexture = loadTexture("textures/wood.jpg");
-    std::vector<unsigned int> buildingTextures = {brickTexture, woodTexture};
+    unsigned int towerTexture = loadTexture("textures/colormap.png");
     
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
@@ -502,10 +548,18 @@ int main() {
     Mesh carWindows = ObjectMeshes::createCarWindows();
     Mesh carWheels = ObjectMeshes::createCarWheels();
 
-    std::vector<std::vector<Mesh>> buildingMeshes = createBuildingMeshes(buildingTextures);
-    std::vector<BuildingInstance> buildingLayout = createBuildingLayout(buildingTextures.size());
-    std::vector<BuildingLight> buildingLights = createBuildingLights(buildingLayout);
-    std::vector<StaticObstacle> staticObstacles = createStaticObstacles(buildingLayout);
+    BuildingModels::Scene towerScene;
+    try {
+        towerScene = BuildingModels::loadTowerScene(towerTexture);
+    }
+    catch (const std::exception& ex) {
+        std::cout << "Failed to load tower scene: " << ex.what() << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+
+    std::vector<BuildingLight> buildingLights = createBuildingLights(towerScene);
+    std::vector<StaticObstacle> staticObstacles = createStaticObstacles(towerScene.instances);
     std::vector<Collision::AABB2D> staticObstacleAABBs = extractAABBs(staticObstacles);
 
     Mesh windmillMesh = ObjectMeshes::createWindmill();
@@ -518,12 +572,12 @@ int main() {
     ObjectRenderer::CarAppearance carAppearance = ObjectRenderer::defaultCarAppearance();
 
     glm::vec3 groundCamPos(0.0f);
-    if (!buildingLayout.empty()) {
-        const BuildingInstance& b = buildingLayout[0];
-        // if the building is on the -X side, the road is at +X. 
-        // move the camera to the front face of the building facing the road.
-        float roadDirectionX = (b.position.x < 0) ? 1.0f : -1.0f; 
-        groundCamPos = b.position + glm::vec3(roadDirectionX * (BUILDING_WIDTH / 2.0f + 0.5f), CAMERA_GROUND_HEIGHT, 0.0f);
+    if (!towerScene.instances.empty()) {
+        const BuildingModels::Instance& b = towerScene.instances[0];
+        groundCamPos = b.position
+            + glm::vec3(BuildingModels::roadFacingSignX(b) * (b.halfWidth + CAMERA_GROUND_FRONT_OFFSET),
+                        CAMERA_GROUND_HEIGHT,
+                        0.0f);
     }
 
     // game loop
@@ -565,9 +619,6 @@ int main() {
         glm::mat4 view = camera.getViewMatrix(carPos, carAngle, groundCamPos, activeLightPos, activeLightDir);
         glm::vec3 cameraPos = glm::vec3(glm::inverse(view)[3]);
 
-        setupLighting(shaderProgram, buildingLights, cameraPos, currentFrame);
-
-        
         processInput(window, deltaTime);
         windmillAngle += windmillSpeed * deltaTime;
         if (windmillAngle > glm::two_pi<float>()) windmillAngle -= glm::two_pi<float>();
@@ -587,6 +638,13 @@ int main() {
                 carZ = nextCarZ;
             }
         }
+
+        setupLighting(shaderProgram,
+                      buildingLights,
+                      towerScene,
+                      windmillAngle,
+                      cameraPos,
+                      currentFrame);
 
         glm::mat4 carModel = glm::mat4(1.0f);
         carModel = glm::translate(carModel, glm::vec3(carX, 0.0f, carZ));
@@ -610,8 +668,7 @@ int main() {
         drawBuildings(shaderProgram,
                        projection,
                        view,
-                       buildingMeshes,
-                       buildingLayout,
+                       towerScene,
                        buildingLights,
                        windmillMesh,
                        lightGimbalBaseMesh,
@@ -647,11 +704,7 @@ int main() {
     lightGimbalHeadMesh.cleanup();
     hitboxUnitBox.cleanup();
     walls.cleanup();
-    for (std::vector<Mesh>& textureMeshGroup : buildingMeshes) {
-        for (Mesh& buildingMesh : textureMeshGroup) {
-            buildingMesh.cleanup();
-        }
-    }
+    BuildingModels::cleanup(towerScene);
     glfwTerminate();
     return 0;
 }

@@ -8,7 +8,7 @@ const float WALL_THICKNESS = 1.0f;
 const float CAR_START_X = 0.0f;
 const float CAR_START_Z = 0.0f;
 const float CAR_START_ANGLE_DEG = 0.0f;
-const float CAR_DEFAULT_SPEED = 5.0f;
+const float CAR_DEFAULT_SPEED = 0.0f;
 const float CAR_SPEED_INC = 0.1f;
 const float CAR_TURN_INC = 2.0f; // degrees
 
@@ -35,18 +35,17 @@ const int TRACK_SEGMENTS = 64;      // smoothness of curve
 const int BUILDING_SIDES = 2;
 const int BUILDINGS_PER_SIDE = 2;
 const int BUILDING_COUNT = BUILDING_SIDES * BUILDINGS_PER_SIDE;
+const int BUILDING_MODEL_COUNT = 4;
 
-const int BUILDING_MIN_STORIES = 1;
-const int BUILDING_MAX_STORIES = 3;
-
-const float BUILDING_STORY_HEIGHT = 8.0f;
-const float BUILDING_WIDTH = 6.0f;
-const float BUILDING_DEPTH = 8.0f;
+const float BUILDING_TARGET_FOOTPRINT = 6.0f;
 const float BUILDING_SIDE_CLEARANCE = 2.0f;
 const float BUILDING_SIDE_Z_SPACING = 24.0f;
 const float BUILDING_COLOR_R = 1.0f;
 const float BUILDING_COLOR_G = 1.0f;
 const float BUILDING_COLOR_B = 1.0f;
+const float BUILDING_ROOF_ATTACHMENT_EDGE_MARGIN = 0.2f;
+
+const float CAMERA_GROUND_FRONT_OFFSET = 0.5f;
 
 // Car settings
 const float CAR_SCALE = 0.75;
@@ -59,7 +58,7 @@ const float CAR_CABIN_LENGTH = 8.2f;
 const float CAR_CABIN_HEIGHT = 3.0f;
 const float CAR_CABIN_WIDTH = 7.2f;
 const float CAR_CABIN_OFFSET_X = -2.0f;
-const float CAR_CABIN_OFFSET_Y = 0.0f;
+const float CAR_CABIN_OFFSET_Y = 7.0f;
 const float CAR_CABIN_OFFSET_Z = 0.0f;
 
 const float CAR_WINDOW_THICKNESS = 0.60f;
@@ -108,6 +107,12 @@ const float BUILDING_LIGHT_SWING_MAX_ANGLE_DEG = 30.0f;
 
 const float BUILDING_LIGHT_ROAD_FACING_YAW_POSITIVE_X_DEG = 180.0f;
 const float BUILDING_LIGHT_ROAD_FACING_YAW_NEGATIVE_X_DEG = 0.0f;
+
+const float WINDMILL_LIGHT_OCCLUSION_PARALLEL_EPSILON = 1e-4f;
+const float WINDMILL_LIGHT_OCCLUSION_SOFT_EDGE = 0.12f;
+const float WINDMILL_LIGHT_HUB_RADIUS_FACTOR = 0.5f;
+const float WINDMILL_LIGHT_HUB_MIN_TRANSMISSION = 0.45f;
+const float WINDMILL_LIGHT_BLADE_MIN_TRANSMISSION = 0.55f;
 
 const float BUILDING_LIGHT_GIMBAL_BASE_WIDTH = 1.2f;
 const float BUILDING_LIGHT_GIMBAL_BASE_HEIGHT = 0.35f;

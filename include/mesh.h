@@ -3,6 +3,7 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <unordered_map>
 #include <vector>
 
 // holds all vertex data
@@ -28,16 +29,27 @@ public:
 
     // call to draw the mesh with textures
     void draw(unsigned int shaderProgram) {
+        struct TextureUniformLocations {
+            int hasTexture = -1;
+            int mytexture = -1;
+        };
+
+        static std::unordered_map<unsigned int, TextureUniformLocations> uniformCache;
+        TextureUniformLocations& locations = uniformCache[shaderProgram];
+        if (locations.hasTexture == -1 || locations.mytexture == -1) {
+            locations.hasTexture = glGetUniformLocation(shaderProgram, "hasTexture");
+            locations.mytexture = glGetUniformLocation(shaderProgram, "mytexture");
+        }
+
         // bind texture if one exists (0 means no texture)
-        int hasTexLocation = glGetUniformLocation(shaderProgram, "hasTexture");
         if (textureID != 0) {
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, textureID);
-            glUniform1i(hasTexLocation, 1);
-            glUniform1i(glGetUniformLocation(shaderProgram, "mytexture"), 0); 
+            glUniform1i(locations.hasTexture, 1);
+            glUniform1i(locations.mytexture, 0); 
         }
         else{
-            glUniform1i(hasTexLocation, 0); 
+            glUniform1i(locations.hasTexture, 0); 
         }
 
         // draw mesh

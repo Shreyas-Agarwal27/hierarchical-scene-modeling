@@ -11,8 +11,6 @@ Mesh createCarFrame();
 Mesh createCarWindows();
 Mesh createCarWheels();
 
-Mesh createBuilding(int stories, unsigned int textureID);
-
 Mesh createWindmill();
 Mesh createLightGimbalBase();
 Mesh createLightGimbalHead();

@@ -291,21 +291,6 @@ Mesh createCarWheels() {
     return Mesh(vertices, indices, 0);
 }
 
-Mesh createBuilding(int stories, unsigned int textureID) {
-    std::vector<Vertex> vertices;
-    std::vector<unsigned int> indices;
-
-    for (int i = 0; i < stories; ++i) {
-        float yCenter = (i * BUILDING_STORY_HEIGHT) + (BUILDING_STORY_HEIGHT / 2.0f);
-
-        addBox(vertices, indices, 
-               glm::vec3(0.0f, yCenter, 0.0f), 
-               glm::vec3(BUILDING_WIDTH, BUILDING_STORY_HEIGHT, BUILDING_DEPTH));
-    }
-
-    return Mesh(vertices, indices, textureID);
-}
-
 Mesh createWindmill() {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
