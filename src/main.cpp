@@ -184,6 +184,23 @@ glm::vec3 directionForLight(const BuildingLight& light, float time) {
     return glm::normalize(glm::vec3(rotation * glm::vec4(light.baseDirection, 0.0f)));
 }
 
+glm::vec3 positionForLight(const BuildingLight& light, float time) {
+    const glm::vec3 horizontalForward = glm::normalize(glm::vec3(light.baseDirection.x, 0.0f, light.baseDirection.z));
+    const glm::vec3 neutralNozzleOffset = horizontalForward * (BUILDING_LIGHT_LAMP_DEPTH * BUILDING_LIGHT_LAMP_NOZZLE_X_FACTOR);
+
+    // Reconstruct the gimbal pivot point from the neutral nozzle position.
+    const glm::vec3 pivotPosition = light.basePosition
+        - glm::vec3(0.0f, BUILDING_LIGHT_LAMP_CENTER_Y, 0.0f)
+        - neutralNozzleOffset;
+
+    const glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), swingAngleForLight(light, time), glm::vec3(0.0f, 1.0f, 0.0f));
+    const glm::vec3 swungNozzleOffset = glm::vec3(rotation * glm::vec4(neutralNozzleOffset, 0.0f));
+
+    return pivotPosition
+        + glm::vec3(0.0f, BUILDING_LIGHT_LAMP_CENTER_Y, 0.0f)
+        + swungNozzleOffset;
+}
+
 glm::vec3 windmillCenterForBuilding(const BuildingModels::Instance& building) {
     const float edgeOffset = std::max(0.0f, building.halfWidth - BUILDING_ROOF_ATTACHMENT_EDGE_MARGIN);
     return BuildingModels::roofCenter(building)
@@ -199,7 +216,7 @@ float gimbalFacingYawRadians(const BuildingModels::Instance& building) {
 }
 
 float windmillBeamTransmission(const BuildingModels::Instance& building,
-                               const BuildingLight& light,
+                               const glm::vec3& lightPosition,
                                const glm::vec3& lightDirection,
                                float currentWindmillAngle) {
     const glm::vec3 windmillCenter = windmillCenterForBuilding(building);
@@ -210,12 +227,12 @@ float windmillBeamTransmission(const BuildingModels::Instance& building,
         return 1.0f;
     }
 
-    const float t = glm::dot(windmillCenter - light.basePosition, rotorAxis) / denom;
+    const float t = glm::dot(windmillCenter - lightPosition, rotorAxis) / denom;
     if (t <= 0.0f) {
         return 1.0f;
     }
 
-    const glm::vec3 intersection = light.basePosition + (lightDirection * t);
+    const glm::vec3 intersection = lightPosition + (lightDirection * t);
     const glm::vec3 relative = intersection - windmillCenter;
     const glm::vec3 relativeOnDisk = relative - (rotorAxis * glm::dot(relative, rotorAxis));
 
@@ -356,18 +373,19 @@ void setupLighting(unsigned int shaderProgram,
 
     for (int i = 0; i < activeLightCount; i++) {
         lights[i].currentSwingAngle = swingAngleForLight(lights[i], time);
+        glm::vec3 currentPos = positionForLight(lights[i], time);
         glm::vec3 currentDir = directionForLight(lights[i], time);
         glm::vec3 effectiveColor = lights[i].color;
 
         if (i < static_cast<int>(towerScene.instances.size())) {
             const float transmission = windmillBeamTransmission(towerScene.instances[static_cast<std::size_t>(i)],
-                                                                lights[i],
+                                                                currentPos,
                                                                 currentDir,
                                                                 currentWindmillAngle);
             effectiveColor *= transmission;
         }
 
-        glUniform3fv(gLightingUniforms.position[i], 1, glm::value_ptr(lights[i].basePosition));
+        glUniform3fv(gLightingUniforms.position[i], 1, glm::value_ptr(currentPos));
         glUniform3fv(gLightingUniforms.direction[i], 1, glm::value_ptr(currentDir));
         glUniform3fv(gLightingUniforms.color[i], 1, glm::value_ptr(effectiveColor));
         
@@ -614,7 +632,7 @@ int main() {
         glm::vec3 activeLightPos(0.0f, DEFAULT_LIGHTSOURCE_VIEW_HEIGHT, 0.0f);
         if (!buildingLights.empty()) {
             activeLightDir = directionForLight(buildingLights[0], currentFrame);
-            activeLightPos = buildingLights[0].basePosition;
+            activeLightPos = positionForLight(buildingLights[0], currentFrame);
         }
 
         glm::mat4 view = camera.getViewMatrix(carPos, carAngle, groundCamPos, activeLightPos, activeLightDir);
