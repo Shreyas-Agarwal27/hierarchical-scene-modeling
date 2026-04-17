@@ -532,6 +532,7 @@ int main() {
     unsigned int groundTexture = loadTexture("textures/grass.png");
     unsigned int trackTexture = loadTexture("textures/road.png");
     unsigned int brickTexture = loadTexture("textures/brick.jpg");
+    unsigned int woodTexture = loadTexture("textures/wood.jpg");
     unsigned int towerTexture = loadTexture("textures/colormap.png");
     
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
@@ -562,7 +563,7 @@ int main() {
     std::vector<StaticObstacle> staticObstacles = createStaticObstacles(towerScene.instances);
     std::vector<Collision::AABB2D> staticObstacleAABBs = extractAABBs(staticObstacles);
 
-    Mesh windmillMesh = ObjectMeshes::createWindmill();
+    Mesh windmillMesh = ObjectMeshes::createWindmill(woodTexture);
     Mesh lightGimbalBaseMesh = ObjectMeshes::createLightGimbalBase();
     Mesh lightGimbalHeadMesh = ObjectMeshes::createLightGimbalHead();
     Mesh hitboxUnitBox = ObjectMeshes::createUnitBox();

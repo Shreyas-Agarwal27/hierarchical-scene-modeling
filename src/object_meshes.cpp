@@ -77,11 +77,12 @@ Mesh createTrack(unsigned int textureID) {
 
 Mesh createGround(unsigned int textureID) {
     float halfSize = WORLD_SIZE / 2.0f;
+    const float uvScale = WORLD_SIZE / 10.0f;
 
     std::vector<Vertex> vertices = {
-        {{-halfSize, 0.0f, -halfSize}, {0.0f, 1.0f, 0.0f}, {0.0f, WORLD_SIZE}},
-        {{halfSize, 0.0f, -halfSize}, {0.0f, 1.0f, 0.0f}, {WORLD_SIZE, WORLD_SIZE}},
-        {{halfSize, 0.0f, halfSize}, {0.0f, 1.0f, 0.0f}, {WORLD_SIZE, 0.0f}},
+        {{-halfSize, 0.0f, -halfSize}, {0.0f, 1.0f, 0.0f}, {0.0f, uvScale}},
+        {{halfSize, 0.0f, -halfSize}, {0.0f, 1.0f, 0.0f}, {uvScale, uvScale}},
+        {{halfSize, 0.0f, halfSize}, {0.0f, 1.0f, 0.0f}, {uvScale, 0.0f}},
         {{-halfSize, 0.0f, halfSize}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}
     };
 
@@ -113,12 +114,23 @@ void addBox(std::vector<Vertex>& vertices,
         center + glm::vec3(-hx, hy, hz),
     };
 
-    auto addFace = [&](int i0, int i1, int i2, int i3, const glm::vec3& normal) {
+    constexpr float uvScale = 0.25f;
+
+    auto addFace = [&](int i0,
+                       int i1,
+                       int i2,
+                       int i3,
+                       const glm::vec3& normal,
+                       float uSize,
+                       float vSize) {
         unsigned int startIdx = static_cast<unsigned int>(vertices.size());
+        const float uRepeat = uSize * uvScale;
+        const float vRepeat = vSize * uvScale;
+
         vertices.push_back({p[i0], normal, {0.0f, 0.0f}});
-        vertices.push_back({p[i1], normal, {1.0f, 0.0f}});
-        vertices.push_back({p[i2], normal, {1.0f, 1.0f}});
-        vertices.push_back({p[i3], normal, {0.0f, 1.0f}});
+        vertices.push_back({p[i1], normal, {uRepeat, 0.0f}});
+        vertices.push_back({p[i2], normal, {uRepeat, vRepeat}});
+        vertices.push_back({p[i3], normal, {0.0f, vRepeat}});
 
         indices.push_back(startIdx);
         indices.push_back(startIdx + 1);
@@ -128,12 +140,12 @@ void addBox(std::vector<Vertex>& vertices,
         indices.push_back(startIdx + 3);
     };
 
-    addFace(0, 4, 5, 1, glm::vec3(0, -1, 0));
-    addFace(3, 2, 6, 7, glm::vec3(0, 1, 0));
-    addFace(0, 1, 2, 3, glm::vec3(0, 0, -1));
-    addFace(5, 4, 7, 6, glm::vec3(0, 0, 1));
-    addFace(4, 0, 3, 7, glm::vec3(-1, 0, 0));
-    addFace(1, 5, 6, 2, glm::vec3(1, 0, 0));
+    addFace(0, 4, 5, 1, glm::vec3(0, -1, 0), size.x, size.z);
+    addFace(3, 2, 6, 7, glm::vec3(0, 1, 0), size.x, size.z);
+    addFace(0, 1, 2, 3, glm::vec3(0, 0, -1), size.x, size.y);
+    addFace(5, 4, 7, 6, glm::vec3(0, 0, 1), size.x, size.y);
+    addFace(4, 0, 3, 7, glm::vec3(-1, 0, 0), size.z, size.y);
+    addFace(1, 5, 6, 2, glm::vec3(1, 0, 0), size.z, size.y);
 }
 
 void addCylinderZ(std::vector<Vertex>& vertices,
@@ -291,7 +303,7 @@ Mesh createCarWheels() {
     return Mesh(vertices, indices, 0);
 }
 
-Mesh createWindmill() {
+Mesh createWindmill(unsigned int textureID) {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
@@ -305,8 +317,7 @@ Mesh createWindmill() {
            glm::vec3(0.0f, 0.0f, 0.0f), 
            glm::vec3(WINDMILL_RADIUS * 2.0f, WINDMILL_BLADE_WIDTH, WINDMILL_DEPTH));
 
-    // just colour, textureID = 0
-    return Mesh(vertices, indices, 0); 
+    return Mesh(vertices, indices, textureID);
 }
 
 Mesh createLightGimbalBase() {
