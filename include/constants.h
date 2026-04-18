@@ -67,6 +67,25 @@ const float CAR_WINDOW_HEIGHT = 2.25f;
 const float CAR_WHEEL_X_RATIO = 0.625f; // how far the wheels are pushed toward the front bumper
 const float CAR_WHEEL_Z_PROTRUSION = 0.5f; // how far the wheels pop out from the sides of the car
 
+const int MAX_CAR_HEADLIGHTS = 2;
+const float CAR_HEADLIGHT_LOCAL_X = (CAR_FRAME_LENGTH * 0.5f) + 0.2f;
+const float CAR_HEADLIGHT_LOCAL_Y = CAR_FRAME_HEIGHT;
+const float CAR_HEADLIGHT_LOCAL_Z_OFFSET = CAR_FRAME_WIDTH * 0.28f;
+const float CAR_HEADLIGHT_DIRECTION_Y = -0.09f;
+const float CAR_HEADLIGHT_VISUAL_WIDTH = 0.7f;
+const float CAR_HEADLIGHT_VISUAL_HEIGHT = 0.42f;
+const float CAR_HEADLIGHT_VISUAL_DEPTH = 0.25f;
+
+const float CAR_HEADLIGHT_INNER_CUTOFF_DEG = 13.5f;
+const float CAR_HEADLIGHT_OUTER_CUTOFF_DEG = 18.5f;
+const float CAR_HEADLIGHT_ATTENUATION_CONSTANT = 1.0f;
+const float CAR_HEADLIGHT_ATTENUATION_LINEAR = 0.028f;
+const float CAR_HEADLIGHT_ATTENUATION_QUADRATIC = 0.0038f;
+const float CAR_HEADLIGHT_AMBIENT_STRENGTH = 0.022f;
+const float CAR_HEADLIGHT_COLOR_R = 1.0f;
+const float CAR_HEADLIGHT_COLOR_G = 1.0f;
+const float CAR_HEADLIGHT_COLOR_B = 1.0f;
+
 // Collision settings
 const float CAR_HITBOX_LENGTH = CAR_FRAME_LENGTH * CAR_SCALE;
 const float CAR_HITBOX_WIDTH = (CAR_FRAME_WIDTH + (2.0f * CAR_WHEEL_Z_PROTRUSION)) * CAR_SCALE;

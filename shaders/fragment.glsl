@@ -11,6 +11,7 @@ uniform bool hasTexture;
 uniform vec3 viewPos;
 uniform float globalAmbientStrength;
 uniform float spotlightAmbientStrength;
+uniform float headlightAmbientStrength;
 
 // shininess and strength of metal
 uniform float shininess;
@@ -34,8 +35,17 @@ struct SpotLight {
 uniform SpotLight buildingLights[MAX_BUILDING_LIGHTS];
 uniform int numBuildingLights;
 
+#define MAX_CAR_HEADLIGHTS 2
+uniform SpotLight carHeadlights[MAX_CAR_HEADLIGHTS];
+uniform int numCarHeadlights;
+
 // Function for calculating spotlight
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 albedoColor){
+vec3 CalcSpotLight(SpotLight light,
+                   vec3 normal,
+                   vec3 fragPos,
+                   vec3 viewDir,
+                   vec3 albedoColor,
+                   float ambientStrength){
     vec3 lightDir = normalize(light.position - fragPos);
     
     // Diffuse
@@ -54,7 +64,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     
-    vec3 ambient = light.color * spotlightAmbientStrength * albedoColor;
+    vec3 ambient = light.color * ambientStrength * albedoColor;
     vec3 diffuse = light.color * diff * albedoColor;
     vec3 specular = light.color * spec * specularStrength; // White specular highlights for metallic feel
     
@@ -70,7 +80,11 @@ void main()
     vec3 result = albedo * globalAmbientStrength;
     
     for(int i = 0; i < numBuildingLights; i++) {
-        result += CalcSpotLight(buildingLights[i], norm, FragPos, viewDir, albedo);
+        result += CalcSpotLight(buildingLights[i], norm, FragPos, viewDir, albedo, spotlightAmbientStrength);
+    }
+
+    for(int i = 0; i < numCarHeadlights; i++) {
+        result += CalcSpotLight(carHeadlights[i], norm, FragPos, viewDir, albedo, headlightAmbientStrength);
     }
     
     FragColor = vec4(result, 1.0);

@@ -35,6 +35,7 @@ float carAngle = glm::radians(CAR_START_ANGLE_DEG);
 bool carCrashed = false;
 bool showHitboxes = false;
 bool resetWorldRequested = false;
+bool headlightsEnabled = true;
 
 float windmillAngle = 0.0f;
 float windmillSpeed = WINDMILL_DEFAULT_SPEED;
@@ -52,11 +53,19 @@ struct BuildingLight {
     float swingSpeed = BUILDING_LIGHT_SWING_BASE_SPEED;
 };
 
+struct CarHeadlightState {
+    glm::vec3 position;
+    glm::vec3 direction;
+    glm::vec3 color;
+};
+
 struct LightingUniformLocations {
     int viewPos = -1;
     int globalAmbientStrength = -1;
     int spotlightAmbientStrength = -1;
+    int headlightAmbientStrength = -1;
     int numBuildingLights = -1;
+    int numCarHeadlights = -1;
     std::array<int, MAX_BUILDING_LIGHTS> position{};
     std::array<int, MAX_BUILDING_LIGHTS> direction{};
     std::array<int, MAX_BUILDING_LIGHTS> color{};
@@ -65,6 +74,15 @@ struct LightingUniformLocations {
     std::array<int, MAX_BUILDING_LIGHTS> constant{};
     std::array<int, MAX_BUILDING_LIGHTS> linear{};
     std::array<int, MAX_BUILDING_LIGHTS> quadratic{};
+
+    std::array<int, MAX_CAR_HEADLIGHTS> carPosition{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carDirection{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carColor{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carCutOff{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carOuterCutOff{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carConstant{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carLinear{};
+    std::array<int, MAX_CAR_HEADLIGHTS> carQuadratic{};
 };
 
 LightingUniformLocations gLightingUniforms;
@@ -79,7 +97,9 @@ void cacheLightingUniformLocations(unsigned int shaderProgram) {
     gLightingUniforms.viewPos = glGetUniformLocation(shaderProgram, "viewPos");
     gLightingUniforms.globalAmbientStrength = glGetUniformLocation(shaderProgram, "globalAmbientStrength");
     gLightingUniforms.spotlightAmbientStrength = glGetUniformLocation(shaderProgram, "spotlightAmbientStrength");
+    gLightingUniforms.headlightAmbientStrength = glGetUniformLocation(shaderProgram, "headlightAmbientStrength");
     gLightingUniforms.numBuildingLights = glGetUniformLocation(shaderProgram, "numBuildingLights");
+    gLightingUniforms.numCarHeadlights = glGetUniformLocation(shaderProgram, "numCarHeadlights");
 
     for (int i = 0; i < MAX_BUILDING_LIGHTS; ++i) {
         const std::string prefix = "buildingLights[" + std::to_string(i) + "].";
@@ -91,6 +111,18 @@ void cacheLightingUniformLocations(unsigned int shaderProgram) {
         gLightingUniforms.constant[i] = glGetUniformLocation(shaderProgram, (prefix + "constant").c_str());
         gLightingUniforms.linear[i] = glGetUniformLocation(shaderProgram, (prefix + "linear").c_str());
         gLightingUniforms.quadratic[i] = glGetUniformLocation(shaderProgram, (prefix + "quadratic").c_str());
+    }
+
+    for (int i = 0; i < MAX_CAR_HEADLIGHTS; ++i) {
+        const std::string prefix = "carHeadlights[" + std::to_string(i) + "].";
+        gLightingUniforms.carPosition[i] = glGetUniformLocation(shaderProgram, (prefix + "position").c_str());
+        gLightingUniforms.carDirection[i] = glGetUniformLocation(shaderProgram, (prefix + "direction").c_str());
+        gLightingUniforms.carColor[i] = glGetUniformLocation(shaderProgram, (prefix + "color").c_str());
+        gLightingUniforms.carCutOff[i] = glGetUniformLocation(shaderProgram, (prefix + "cutOff").c_str());
+        gLightingUniforms.carOuterCutOff[i] = glGetUniformLocation(shaderProgram, (prefix + "outerCutOff").c_str());
+        gLightingUniforms.carConstant[i] = glGetUniformLocation(shaderProgram, (prefix + "constant").c_str());
+        gLightingUniforms.carLinear[i] = glGetUniformLocation(shaderProgram, (prefix + "linear").c_str());
+        gLightingUniforms.carQuadratic[i] = glGetUniformLocation(shaderProgram, (prefix + "quadratic").c_str());
     }
 }
 
@@ -199,6 +231,31 @@ glm::vec3 positionForLight(const BuildingLight& light, float time) {
     return pivotPosition
         + glm::vec3(0.0f, BUILDING_LIGHT_LAMP_CENTER_Y, 0.0f)
         + swungNozzleOffset;
+}
+
+std::array<CarHeadlightState, MAX_CAR_HEADLIGHTS> createCarHeadlights(const glm::mat4& carModel) {
+    std::array<CarHeadlightState, MAX_CAR_HEADLIGHTS> headlights{};
+    constexpr std::array<float, MAX_CAR_HEADLIGHTS> sideSigns = {1.0f, -1.0f};
+
+    const glm::vec3 localDirection = glm::normalize(glm::vec3(1.0f, CAR_HEADLIGHT_DIRECTION_Y, 0.0f));
+    const glm::vec3 worldDirection = glm::normalize(glm::vec3(carModel * glm::vec4(localDirection, 0.0f)));
+    const glm::vec3 headlightColor(CAR_HEADLIGHT_COLOR_R,
+                                   CAR_HEADLIGHT_COLOR_G,
+                                   CAR_HEADLIGHT_COLOR_B);
+
+    for (int i = 0; i < MAX_CAR_HEADLIGHTS; ++i) {
+        const glm::vec3 localPos(CAR_HEADLIGHT_LOCAL_X,
+                                 CAR_HEADLIGHT_LOCAL_Y,
+                                 sideSigns[static_cast<std::size_t>(i)] * CAR_HEADLIGHT_LOCAL_Z_OFFSET);
+
+        headlights[static_cast<std::size_t>(i)] = {
+            glm::vec3(carModel * glm::vec4(localPos, 1.0f)),
+            worldDirection,
+            headlightColor,
+        };
+    }
+
+    return headlights;
 }
 
 glm::vec3 windmillCenterForBuilding(const BuildingModels::Instance& building) {
@@ -355,11 +412,44 @@ void drawBuildings(unsigned int shaderProgram,
     }
 }
 
+void drawCarHeadlightsVisual(unsigned int shaderProgram,
+                             const glm::mat4& projection,
+                             const glm::mat4& view,
+                             Mesh& unitBoxMesh,
+                             const glm::mat4& carModel,
+                             bool headlightsOn) {
+    constexpr std::array<float, MAX_CAR_HEADLIGHTS> sideSigns = {1.0f, -1.0f};
+    const glm::vec3 lightColor = headlightsOn
+        ? glm::vec3(CAR_HEADLIGHT_COLOR_R, CAR_HEADLIGHT_COLOR_G, CAR_HEADLIGHT_COLOR_B)
+        : glm::vec3(0.45f, 0.45f, 0.45f);
+
+    for (float sign : sideSigns) {
+        glm::mat4 headlightModel = carModel;
+        headlightModel = glm::translate(headlightModel,
+                                        glm::vec3(CAR_HEADLIGHT_LOCAL_X,
+                                                  CAR_HEADLIGHT_LOCAL_Y,
+                                                  sign * CAR_HEADLIGHT_LOCAL_Z_OFFSET));
+        headlightModel = glm::scale(headlightModel,
+                                    glm::vec3(CAR_HEADLIGHT_VISUAL_DEPTH,
+                                              CAR_HEADLIGHT_VISUAL_HEIGHT,
+                                              CAR_HEADLIGHT_VISUAL_WIDTH));
+
+        ObjectRenderer::drawBuilding(shaderProgram,
+                                     projection,
+                                     view,
+                                     unitBoxMesh,
+                                     headlightModel,
+                                     lightColor);
+    }
+}
+
 void setupLighting(unsigned int shaderProgram,
                    std::vector<BuildingLight>& lights,
                    const BuildingModels::Scene& towerScene,
                    float currentWindmillAngle,
                    const glm::vec3& viewPos,
+                   const glm::mat4& carModel,
+                   bool headlightsOn,
                    float time) {
     cacheLightingUniformLocations(shaderProgram);
 
@@ -367,6 +457,12 @@ void setupLighting(unsigned int shaderProgram,
     glUniform3fv(gLightingUniforms.viewPos, 1, glm::value_ptr(viewPos));
     glUniform1f(gLightingUniforms.globalAmbientStrength, GLOBAL_AMBIENT_STRENGTH);
     glUniform1f(gLightingUniforms.spotlightAmbientStrength, SPOTLIGHT_AMBIENT_STRENGTH);
+    glUniform1f(gLightingUniforms.headlightAmbientStrength, CAR_HEADLIGHT_AMBIENT_STRENGTH);
+
+    static const float buildingInnerCutoff = glm::cos(glm::radians(BUILDING_LIGHT_INNER_CUTOFF_DEG));
+    static const float buildingOuterCutoff = glm::cos(glm::radians(BUILDING_LIGHT_OUTER_CUTOFF_DEG));
+    static const float carInnerCutoff = glm::cos(glm::radians(CAR_HEADLIGHT_INNER_CUTOFF_DEG));
+    static const float carOuterCutoff = glm::cos(glm::radians(CAR_HEADLIGHT_OUTER_CUTOFF_DEG));
 
     const int activeLightCount = std::min(static_cast<int>(lights.size()), MAX_BUILDING_LIGHTS);
     glUniform1i(gLightingUniforms.numBuildingLights, activeLightCount);
@@ -390,13 +486,33 @@ void setupLighting(unsigned int shaderProgram,
         glUniform3fv(gLightingUniforms.color[i], 1, glm::value_ptr(effectiveColor));
         
         // Spotlight cone geometry
-        glUniform1f(gLightingUniforms.cutOff[i], glm::cos(glm::radians(BUILDING_LIGHT_INNER_CUTOFF_DEG)));
-        glUniform1f(gLightingUniforms.outerCutOff[i], glm::cos(glm::radians(BUILDING_LIGHT_OUTER_CUTOFF_DEG)));
+        glUniform1f(gLightingUniforms.cutOff[i], buildingInnerCutoff);
+        glUniform1f(gLightingUniforms.outerCutOff[i], buildingOuterCutoff);
         
         // Attenuation configuration for realistic falloff
         glUniform1f(gLightingUniforms.constant[i], BUILDING_LIGHT_ATTENUATION_CONSTANT);
         glUniform1f(gLightingUniforms.linear[i], BUILDING_LIGHT_ATTENUATION_LINEAR);
         glUniform1f(gLightingUniforms.quadratic[i], BUILDING_LIGHT_ATTENUATION_QUADRATIC);
+    }
+
+    const int activeCarHeadlightCount = headlightsOn ? MAX_CAR_HEADLIGHTS : 0;
+    glUniform1i(gLightingUniforms.numCarHeadlights, activeCarHeadlightCount);
+
+    if (activeCarHeadlightCount > 0) {
+        const std::array<CarHeadlightState, MAX_CAR_HEADLIGHTS> carHeadlights = createCarHeadlights(carModel);
+
+        for (int i = 0; i < activeCarHeadlightCount; ++i) {
+            const CarHeadlightState& headlight = carHeadlights[static_cast<std::size_t>(i)];
+
+            glUniform3fv(gLightingUniforms.carPosition[i], 1, glm::value_ptr(headlight.position));
+            glUniform3fv(gLightingUniforms.carDirection[i], 1, glm::value_ptr(headlight.direction));
+            glUniform3fv(gLightingUniforms.carColor[i], 1, glm::value_ptr(headlight.color));
+            glUniform1f(gLightingUniforms.carCutOff[i], carInnerCutoff);
+            glUniform1f(gLightingUniforms.carOuterCutOff[i], carOuterCutoff);
+            glUniform1f(gLightingUniforms.carConstant[i], CAR_HEADLIGHT_ATTENUATION_CONSTANT);
+            glUniform1f(gLightingUniforms.carLinear[i], CAR_HEADLIGHT_ATTENUATION_LINEAR);
+            glUniform1f(gLightingUniforms.carQuadratic[i], CAR_HEADLIGHT_ATTENUATION_QUADRATIC);
+        }
     }
 }
 
@@ -473,6 +589,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if (key == GLFW_KEY_4) camera.setMode(CameraMode::LIGHTSOURCE_VIEW);
         if (key == GLFW_KEY_5) camera.setMode(CameraMode::HELICOPTER_CAM);
         if (key == GLFW_KEY_B) showHitboxes = !showHitboxes;
+        if (key == GLFW_KEY_H) headlightsEnabled = !headlightsEnabled;
         if (key == GLFW_KEY_SPACE) resetWorldRequested = true;
     }
 
@@ -640,8 +757,7 @@ int main() {
 
         processInput(window, deltaTime);
         windmillAngle += windmillSpeed * deltaTime;
-        if (windmillAngle > glm::two_pi<float>()) windmillAngle -= glm::two_pi<float>();
-        if (windmillAngle < -glm::two_pi<float>()) windmillAngle += glm::two_pi<float>();
+        windmillAngle = std::fmod(windmillAngle, glm::two_pi<float>());
 
         if (!carCrashed) {
             const float nextCarX = carX + (carSpeed * std::cos(carAngle) * deltaTime);
@@ -658,17 +774,19 @@ int main() {
             }
         }
 
-        setupLighting(shaderProgram,
-                      buildingLights,
-                      towerScene,
-                      windmillAngle,
-                      cameraPos,
-                      currentFrame);
-
         glm::mat4 carModel = glm::mat4(1.0f);
         carModel = glm::translate(carModel, glm::vec3(carX, 0.0f, carZ));
         carModel = glm::rotate(carModel, carAngle, glm::vec3(0.0f, 1.0f, 0.0f));
         carModel = glm::scale(carModel, glm::vec3(CAR_SCALE, CAR_SCALE, CAR_SCALE));
+
+        setupLighting(shaderProgram,
+                  buildingLights,
+                  towerScene,
+                  windmillAngle,
+                  cameraPos,
+                  carModel,
+                  headlightsEnabled,
+                  currentFrame);
 
         ObjectRenderer::drawFloor(shaderProgram, projection, view, track, ground);
 
@@ -683,6 +801,13 @@ int main() {
                     carWheels,
                     carModel,
                     carAppearance);
+
+        drawCarHeadlightsVisual(shaderProgram,
+                    projection,
+                    view,
+                    hitboxUnitBox,
+                    carModel,
+                    headlightsEnabled);
 
         drawBuildings(shaderProgram,
                        projection,

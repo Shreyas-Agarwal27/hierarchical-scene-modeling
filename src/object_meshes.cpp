@@ -307,15 +307,20 @@ Mesh createWindmill(unsigned int textureID) {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
+    // Use slightly different blade depths so overlapping blade faces are not coplanar.
+    // avoids depth-fighting shimmer while the windmill rotates.
+    const float primaryBladeDepth = WINDMILL_DEPTH;
+    const float secondaryBladeDepth = WINDMILL_DEPTH * 0.92f;
+
     // vertical blade
     addBox(vertices, indices, 
            glm::vec3(0.0f, 0.0f, 0.0f), 
-           glm::vec3(WINDMILL_BLADE_WIDTH, WINDMILL_RADIUS * 2.0f, WINDMILL_DEPTH));
+            glm::vec3(WINDMILL_BLADE_WIDTH, WINDMILL_RADIUS * 2.0f, primaryBladeDepth));
     
     // horizontal blade
     addBox(vertices, indices, 
            glm::vec3(0.0f, 0.0f, 0.0f), 
-           glm::vec3(WINDMILL_RADIUS * 2.0f, WINDMILL_BLADE_WIDTH, WINDMILL_DEPTH));
+            glm::vec3(WINDMILL_RADIUS * 2.0f, WINDMILL_BLADE_WIDTH, secondaryBladeDepth));
 
     return Mesh(vertices, indices, textureID);
 }
