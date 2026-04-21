@@ -12,6 +12,11 @@ uniform vec3 viewPos;
 uniform float globalAmbientStrength;
 uniform float spotlightAmbientStrength;
 uniform float headlightAmbientStrength;
+uniform vec3 sunDirection;
+uniform vec3 sunColor;
+uniform float sunAmbientStrength;
+uniform float sunDiffuseStrength;
+uniform float sunSpecularStrength;
 
 // shininess and strength of metal
 uniform float shininess;
@@ -68,7 +73,24 @@ vec3 CalcSpotLight(SpotLight light,
     vec3 diffuse = light.color * diff * albedoColor;
     vec3 specular = light.color * spec * specularStrength; // White specular highlights for metallic feel
     
-    return ambient + (diffuse + specular) * attenuation * intensity;
+    return (ambient + diffuse + specular) * attenuation * intensity;
+}
+
+vec3 CalcSunLight(vec3 normal,
+                  vec3 viewDir,
+                  vec3 albedoColor) {
+    vec3 lightDir = normalize(-sunDirection);
+
+    float diff = max(dot(normal, lightDir), 0.0);
+
+    vec3 halfwayDir = normalize(lightDir + viewDir);
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+
+    vec3 ambient = sunColor * sunAmbientStrength * albedoColor;
+    vec3 diffuse = sunColor * (sunDiffuseStrength * diff) * albedoColor;
+    vec3 specular = sunColor * (sunSpecularStrength * spec) * specularStrength;
+
+    return ambient + diffuse + specular;
 }
 
 void main()
@@ -78,6 +100,7 @@ void main()
     vec3 viewDir = normalize(viewPos - FragPos);
     
     vec3 result = albedo * globalAmbientStrength;
+    result += CalcSunLight(norm, viewDir, albedo);
     
     for(int i = 0; i < numBuildingLights; i++) {
         result += CalcSpotLight(buildingLights[i], norm, FragPos, viewDir, albedo, spotlightAmbientStrength);
