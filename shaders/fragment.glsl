@@ -52,13 +52,13 @@ vec3 CalcSpotLight(SpotLight light,
                    vec3 albedoColor,
                    float ambientStrength){
     vec3 lightDir = normalize(light.position - fragPos);
-    
-    // Diffuse
-    float diff = max(dot(normal, lightDir), 0.0);
-    
-    // Specular (Blinn-Phong is usually better for metallic surfaces)
+
+    float ndotl = dot(normal, lightDir);
+    float diff = max(ndotl, 0.0);
+
+    // Avoid non-physical highlights on back-facing fragments.
     vec3 halfwayDir = normalize(lightDir + viewDir);  
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+    float spec = (ndotl > 0.0) ? pow(max(dot(normal, halfwayDir), 0.0), shininess) : 0.0;
     
     // Attenuation
     float distance = length(light.position - fragPos);
@@ -68,8 +68,10 @@ vec3 CalcSpotLight(SpotLight light,
     float theta = dot(lightDir, normalize(-light.direction)); 
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+
+    float frontFacing = smoothstep(0.0, 0.08, ndotl);
     
-    vec3 ambient = light.color * ambientStrength * albedoColor;
+    vec3 ambient = light.color * ambientStrength * albedoColor * frontFacing;
     vec3 diffuse = light.color * diff * albedoColor;
     vec3 specular = light.color * spec * specularStrength; // specular highlights for metallic feel
     
@@ -81,10 +83,11 @@ vec3 CalcSunLight(vec3 normal,
                   vec3 albedoColor) {
     vec3 lightDir = normalize(-sunDirection);
 
-    float diff = max(dot(normal, lightDir), 0.0);
+    float ndotl = dot(normal, lightDir);
+    float diff = max(ndotl, 0.0);
 
     vec3 halfwayDir = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(normal, halfwayDir), 0.0), shininess);
+    float spec = (ndotl > 0.0) ? pow(max(dot(normal, halfwayDir), 0.0), shininess) : 0.0;
 
     vec3 ambient = sunColor * sunAmbientStrength * albedoColor;
     vec3 diffuse = sunColor * (sunDiffuseStrength * diff) * albedoColor;

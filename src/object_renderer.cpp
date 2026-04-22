@@ -8,6 +8,36 @@
 
 namespace ObjectRenderer {
 
+namespace {
+
+struct RendererUniformLocations {
+    unsigned int program = 0;
+    int projection = -1;
+    int view = -1;
+    int transform = -1;
+    int objectColor = -1;
+    int shininess = -1;
+    int specularStrength = -1;
+};
+
+RendererUniformLocations gRendererUniforms;
+
+void cacheRendererUniformLocations(unsigned int shaderProgram) {
+    if (gRendererUniforms.program == shaderProgram) {
+        return;
+    }
+
+    gRendererUniforms.program = shaderProgram;
+    gRendererUniforms.projection = glGetUniformLocation(shaderProgram, "projection");
+    gRendererUniforms.view = glGetUniformLocation(shaderProgram, "view");
+    gRendererUniforms.transform = glGetUniformLocation(shaderProgram, "transform");
+    gRendererUniforms.objectColor = glGetUniformLocation(shaderProgram, "objectColor");
+    gRendererUniforms.shininess = glGetUniformLocation(shaderProgram, "shininess");
+    gRendererUniforms.specularStrength = glGetUniformLocation(shaderProgram, "specularStrength");
+}
+
+}  // namespace
+
 CarAppearance defaultCarAppearance() {
     return {
         {glm::vec3(0.85f, 0.10f, 0.10f), 0.9f, 0.2f, 1.0f},
@@ -22,12 +52,13 @@ void drawFloor(unsigned int shaderProgram,
                     const glm::mat4& view,
                     Mesh& track,
                     Mesh& ground) {
+    cacheRendererUniformLocations(shaderProgram);
     glUseProgram(shaderProgram);
 
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
-    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
+    glUniformMatrix4fv(gRendererUniforms.projection, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(gRendererUniforms.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniform1f(gRendererUniforms.shininess, DIFFUSE_SHININESS);
+    glUniform1f(gRendererUniforms.specularStrength, DIFFUSE_SPECULAR_STRENGTH);
 
     glEnable(GL_STENCIL_TEST);
 
@@ -37,12 +68,10 @@ void drawFloor(unsigned int shaderProgram,
     glStencilFunc(GL_ALWAYS, 1, 0xFF); // always pass the stencil test
     glStencilMask(0xFF); // enable writing to stencil buffer
 
-    glm::mat4 trackTransform = glm::mat4(1.0f);
-    trackTransform = glm::scale(trackTransform, glm::vec3(1.0f, 1.0f, 1.0f));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(trackTransform));
+    const glm::mat4 trackTransform = glm::mat4(1.0f);
+    glUniformMatrix4fv(gRendererUniforms.transform, 1, GL_FALSE, glm::value_ptr(trackTransform));
 
-    int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
-    glUniform3f(colorLocation, 1.0f, 1.0f, 1.0f);
+    glUniform3f(gRendererUniforms.objectColor, 1.0f, 1.0f, 1.0f);
     track.draw(shaderProgram);
 
     // draw ground
@@ -50,9 +79,9 @@ void drawFloor(unsigned int shaderProgram,
     glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
     glStencilMask(0x00); // reading from stencil buffer
 
-    glm::mat4 groundTransform = glm::mat4(1.0f);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(groundTransform));
-    glUniform3f(colorLocation, 1.0f, 1.0f, 1.0f);
+    const glm::mat4 groundTransform = glm::mat4(1.0f);
+    glUniformMatrix4fv(gRendererUniforms.transform, 1, GL_FALSE, glm::value_ptr(groundTransform));
+    glUniform3f(gRendererUniforms.objectColor, 1.0f, 1.0f, 1.0f);
     ground.draw(shaderProgram);
 
     glDisable(GL_STENCIL_TEST);
@@ -67,37 +96,36 @@ void drawCar(unsigned int shaderProgram,
              Mesh& carWheels,
              const glm::mat4& modelTransform,
              const CarAppearance& appearance) {
+    cacheRendererUniformLocations(shaderProgram);
     glUseProgram(shaderProgram);
     
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(modelTransform));
+    glUniformMatrix4fv(gRendererUniforms.projection, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(gRendererUniforms.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(gRendererUniforms.transform, 1, GL_FALSE, glm::value_ptr(modelTransform));
 
-    int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
+    glUniform1f(gRendererUniforms.shininess, METAL_SHININESS);
+    glUniform1f(gRendererUniforms.specularStrength, METAL_SPECULAR_STRENGTH);
 
-    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), METAL_SHININESS);
-    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), METAL_SPECULAR_STRENGTH);
-
-    glUniform3f(colorLocation,
+    glUniform3f(gRendererUniforms.objectColor,
                 appearance.frame.baseColor.r,
                 appearance.frame.baseColor.g,
                 appearance.frame.baseColor.b);
     carFrame.draw(shaderProgram);
 
-    glUniform3f(colorLocation,
+    glUniform3f(gRendererUniforms.objectColor,
                 appearance.windows.baseColor.r,
                 appearance.windows.baseColor.g,
                 appearance.windows.baseColor.b);
-    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
-    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
+    glUniform1f(gRendererUniforms.shininess, DIFFUSE_SHININESS);
+    glUniform1f(gRendererUniforms.specularStrength, DIFFUSE_SPECULAR_STRENGTH);
     carWindows.draw(shaderProgram);
 
-    glUniform3f(colorLocation,
+    glUniform3f(gRendererUniforms.objectColor,
                 appearance.wheels.baseColor.r,
                 appearance.wheels.baseColor.g,
                 appearance.wheels.baseColor.b);
-    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
-    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
+    glUniform1f(gRendererUniforms.shininess, DIFFUSE_SHININESS);
+    glUniform1f(gRendererUniforms.specularStrength, DIFFUSE_SPECULAR_STRENGTH);
     carWheels.draw(shaderProgram);
 }
 
@@ -107,16 +135,16 @@ void drawBuilding(unsigned int shaderProgram,
                   Mesh& buildingMesh,
                   const glm::mat4& modelTransform,
                   const glm::vec3& color) {
+    cacheRendererUniformLocations(shaderProgram);
     glUseProgram(shaderProgram);
     
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "transform"), 1, GL_FALSE, glm::value_ptr(modelTransform));
-    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), DIFFUSE_SHININESS);
-    glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), DIFFUSE_SPECULAR_STRENGTH);
+    glUniformMatrix4fv(gRendererUniforms.projection, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniformMatrix4fv(gRendererUniforms.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(gRendererUniforms.transform, 1, GL_FALSE, glm::value_ptr(modelTransform));
+    glUniform1f(gRendererUniforms.shininess, DIFFUSE_SHININESS);
+    glUniform1f(gRendererUniforms.specularStrength, DIFFUSE_SPECULAR_STRENGTH);
 
-    int colorLocation = glGetUniformLocation(shaderProgram, "objectColor");
-    glUniform3f(colorLocation, color.r, color.g, color.b);
+    glUniform3f(gRendererUniforms.objectColor, color.r, color.g, color.b);
 
     buildingMesh.draw(shaderProgram);
 }

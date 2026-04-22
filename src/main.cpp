@@ -303,8 +303,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         if (key == GLFW_KEY_SPACE) resetWorldRequested = true;
     }
 
+}
+
+void processInput(GLFWwindow *window, float deltaTime) {
     if (camera.currentMode == CameraMode::GROUND_VIEW) {
-        
         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && camera.groundViewYaw < glm::radians(GROUND_CAMERA_MAX_ANGLE)) {
             camera.groundViewYaw += PAN_SPEED * deltaTime;
         }
@@ -312,9 +314,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             camera.groundViewYaw -= PAN_SPEED * deltaTime;
         }
     }
-}
 
-void processInput(GLFWwindow *window, float deltaTime) {
     if (!carCrashed) {
         if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
             carSpeed += (CAR_SPEED_INC * 50.0f) * deltaTime;

@@ -7,7 +7,7 @@ OBJ_DIR = obj
 INC_DIR = include
 
 CXXFLAGS = -std=c++17 -Wall -Iinclude
-CFLAGS = -Wall -Iinclude
+CFLAGS = -Wall -O2 -Iinclude
 
 # -lglfw links GLFW, -lGL links OpenGL, -ldl is required by GLAD to load pointers, -lm is for math
 LDFLAGS = -lglfw -lGL -ldl -lm

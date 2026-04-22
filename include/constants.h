@@ -41,9 +41,9 @@ const float BUILDING_ROOF_ATTACHMENT_EDGE_MARGIN = 0.2f;
 const float CAMERA_GROUND_FRONT_OFFSET = 0.5f;
 
 // Car settings
-const float CAR_START_X = TRACK_RADIUS_X - (TRACK_WIDTH * 0.5f);
+const float CAR_START_X = -TRACK_RADIUS_X + (TRACK_WIDTH * 0.5f);
 const float CAR_START_Z = 0.0f;
-const float CAR_START_ANGLE_DEG = -90.0f;
+const float CAR_START_ANGLE_DEG = 90.0f;
 const float CAR_DEFAULT_SPEED = 0.0f;
 const float CAR_SPEED_INC = 0.1f;
 const float CAR_TURN_INC = 2.0f; // degrees
@@ -81,7 +81,7 @@ const float CAR_HEADLIGHT_OUTER_CUTOFF_DEG = 18.5f;
 const float CAR_HEADLIGHT_ATTENUATION_CONSTANT = 1.0f;
 const float CAR_HEADLIGHT_ATTENUATION_LINEAR = 0.028f;
 const float CAR_HEADLIGHT_ATTENUATION_QUADRATIC = 0.0038f;
-const float CAR_HEADLIGHT_AMBIENT_STRENGTH = 0.022f;
+const float CAR_HEADLIGHT_AMBIENT_STRENGTH = 0.5f;
 const float CAR_HEADLIGHT_COLOR_R = 1.0f;
 const float CAR_HEADLIGHT_COLOR_G = 1.0f;
 const float CAR_HEADLIGHT_COLOR_B = 1.0f;
