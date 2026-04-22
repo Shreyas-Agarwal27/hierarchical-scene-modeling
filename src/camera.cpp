@@ -46,7 +46,7 @@ glm::mat4 Camera::getViewMatrix(
         case CameraMode::GROUND_VIEW: {
             // front of a building, looking left/right 
             // clamp yaw to +/- 30 degrees
-            float yaw = std::clamp(groundViewYaw, -glm::radians(30.0f), glm::radians(30.0f));
+            float yaw = std::clamp(groundViewYaw, -glm::radians(GROUND_CAMERA_MAX_ANGLE), glm::radians(GROUND_CAMERA_MAX_ANGLE));
             glm::vec3 baseLookDir = glm::normalize(glm::vec3(-groundCamPos.x, 0.0f, 0.0f));
             glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), yaw, up);
             glm::vec3 lookDir = glm::vec3(rotation * glm::vec4(baseLookDir, 0.0f));

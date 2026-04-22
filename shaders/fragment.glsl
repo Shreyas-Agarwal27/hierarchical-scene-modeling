@@ -71,7 +71,7 @@ vec3 CalcSpotLight(SpotLight light,
     
     vec3 ambient = light.color * ambientStrength * albedoColor;
     vec3 diffuse = light.color * diff * albedoColor;
-    vec3 specular = light.color * spec * specularStrength; // White specular highlights for metallic feel
+    vec3 specular = light.color * spec * specularStrength; // specular highlights for metallic feel
     
     return (ambient + diffuse + specular) * attenuation * intensity;
 }

@@ -35,7 +35,7 @@ float carAngle = glm::radians(CAR_START_ANGLE_DEG);
 bool carCrashed = false;
 bool showHitboxes = false;
 bool resetWorldRequested = false;
-bool headlightsEnabled = true;
+bool headlightsEnabled = false;
 
 float windmillAngle = 0.0f;
 float windmillSpeed = WINDMILL_DEFAULT_SPEED;
@@ -462,6 +462,7 @@ int main() {
                      DEFAULT_LIGHTSOURCE_VIEW_DIR_Y,
                      DEFAULT_LIGHTSOURCE_VIEW_DIR_Z);
         glm::vec3 activeLightPos(0.0f, DEFAULT_LIGHTSOURCE_VIEW_HEIGHT, 0.0f);
+        const bool isLightSourceView = (camera.currentMode == CameraMode::LIGHTSOURCE_VIEW);
         if (!buildingLights.empty()) {
             activeLightDir = Lighting::directionForLight(buildingLights[0], currentFrame);
             activeLightPos = Lighting::positionForLight(buildingLights[0], currentFrame);
@@ -502,7 +503,8 @@ int main() {
                     carModel,
                     headlightsEnabled,
                     currentFrame,
-                    dayNightState);
+                    dayNightState,
+                    !isLightSourceView);
 
         ObjectRenderer::drawFloor(shaderProgram, projection, view, track, ground);
 

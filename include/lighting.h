@@ -54,7 +54,8 @@ void setupLighting(unsigned int shaderProgram,
                    const glm::mat4& carModel,
                    bool headlightsOn,
                    float time,
-                   const DayNightCycleState& dayNightState);
+                   const DayNightCycleState& dayNightState,
+                   bool applyWindmillOcclusion);
 
 }  // namespace Lighting
 

@@ -5,13 +5,6 @@ const float WORLD_SIZE = 150.0f;
 const float WALL_HEIGHT = 5.0f;
 const float WALL_THICKNESS = 1.0f;
 
-const float CAR_START_X = 0.0f;
-const float CAR_START_Z = 0.0f;
-const float CAR_START_ANGLE_DEG = 0.0f;
-const float CAR_DEFAULT_SPEED = 0.0f;
-const float CAR_SPEED_INC = 0.1f;
-const float CAR_TURN_INC = 2.0f; // degrees
-
 // Camera settings
 const float CAMERA_FOV = 45.0f;
 const float CAMERA_NEAR_PLANE = 0.1f;
@@ -48,6 +41,13 @@ const float BUILDING_ROOF_ATTACHMENT_EDGE_MARGIN = 0.2f;
 const float CAMERA_GROUND_FRONT_OFFSET = 0.5f;
 
 // Car settings
+const float CAR_START_X = TRACK_RADIUS_X - (TRACK_WIDTH * 0.5f);
+const float CAR_START_Z = 0.0f;
+const float CAR_START_ANGLE_DEG = -90.0f;
+const float CAR_DEFAULT_SPEED = 0.0f;
+const float CAR_SPEED_INC = 0.1f;
+const float CAR_TURN_INC = 2.0f; // degrees
+
 const float CAR_SCALE = 0.75;
 const float CAR_FRAME_LENGTH = 16.0f;
 const float CAR_FRAME_WIDTH = 8.0f;
@@ -162,7 +162,7 @@ const float BUILDING_LIGHT_ATTENUATION_LINEAR = 0.014f;
 const float BUILDING_LIGHT_ATTENUATION_QUADRATIC = 0.0007f;
 
 const float GLOBAL_AMBIENT_STRENGTH = 0.1f;
-const float SPOTLIGHT_AMBIENT_STRENGTH = 0.05f;
+const float SPOTLIGHT_AMBIENT_STRENGTH = 0.5f;
 
 // Day-night cycle and sun settings
 const bool DAY_NIGHT_CYCLE_ENABLED = true;

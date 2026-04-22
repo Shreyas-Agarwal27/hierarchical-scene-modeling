@@ -352,7 +352,8 @@ void setupLighting(unsigned int shaderProgram,
                    const glm::mat4& carModel,
                    bool headlightsOn,
                    float time,
-                   const DayNightCycleState& dayNightState) {
+                   const DayNightCycleState& dayNightState,
+                   bool applyWindmillOcclusion) {
     cacheLightingUniformLocations(shaderProgram);
 
     glUseProgram(shaderProgram);
@@ -380,7 +381,7 @@ void setupLighting(unsigned int shaderProgram,
         glm::vec3 currentDir = directionForLight(lights[i], time);
         glm::vec3 effectiveColor = lights[i].color;
 
-        if (i < static_cast<int>(towerScene.instances.size())) {
+        if (applyWindmillOcclusion && i < static_cast<int>(towerScene.instances.size())) {
             const float transmission = windmillBeamTransmission(towerScene.instances[static_cast<std::size_t>(i)],
                                                                 currentPos,
                                                                 currentDir,
