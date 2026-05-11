@@ -58,13 +58,13 @@ make clean
 
 ### Scene Interaction
 
-- `F`: Increase car speed
+- `W`: Increase car speed
 - `S`: Decrease car speed
-- `L`: Turn car left (when moving)
-- `R`: Turn car right (when moving)
+- `A`: Turn car left (when moving)
+- `D`: Turn car right (when moving)
 - `H`: Toggle car headlights
-- `W`: Increase windmill speed
-- `Shift + W`: Decrease windmill speed
+- `Up Arrow`: Increase windmill speed
+- `Down Arrow`: Decrease windmill speed
 - `Left Arrow`: Pan ground camera left (ground view)
 - `Right Arrow`: Pan ground camera right (ground view)
 - `B`: Toggle hitbox rendering

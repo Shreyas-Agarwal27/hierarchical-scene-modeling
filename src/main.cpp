@@ -316,7 +316,7 @@ void processInput(GLFWwindow *window, float deltaTime) {
     }
 
     if (!carCrashed) {
-        if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             carSpeed += (CAR_SPEED_INC * 50.0f) * deltaTime;
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
@@ -325,23 +325,20 @@ void processInput(GLFWwindow *window, float deltaTime) {
 
         if (carSpeed != 0.0f) {
             // Multiply by 50 to scale the turn increment nicely with deltaTime
-            if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
                 carAngle += glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
             }
-            if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
                 carAngle -= glm::radians(CAR_TURN_INC * 50.0f) * deltaTime;
             }
         }
     }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || 
-            glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS) {
-            windmillSpeed -= WINDMILL_SPEED_INC * deltaTime;
-        }
-        else {
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
             windmillSpeed += WINDMILL_SPEED_INC * deltaTime;
-        }
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        windmillSpeed -= WINDMILL_SPEED_INC * deltaTime;
     }
 }
 
